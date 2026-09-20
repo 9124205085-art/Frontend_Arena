@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import Header from "./Header";
 import Sidebar, { BottomNav } from "./Sidebar";
 import StoryPanel from "../components/network/StoryPanel";
+import NarrationDock from "../components/narration/NarrationDock";
 import { useLifeStore } from "../store";
 
 export default function AppShell() {
@@ -32,6 +33,7 @@ export default function AppShell() {
         </main>
       </div>
       <BottomNav />
+      <NarrationDock />
       <StoryPanel />
       {toast && (
         <p className="glass pointer-events-none fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-xs md:bottom-8">

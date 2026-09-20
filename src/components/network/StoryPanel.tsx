@@ -7,6 +7,7 @@ import { TYPE_COLOR, TYPE_ICON, TYPE_LABEL } from "../../utils/constants";
 import { formatWhen } from "../../utils/format";
 import { edgesFor, otherId } from "../../data/connectionEngine";
 import { buildStoryPath } from "../../utils/networkGraph";
+import { buildMomentNarration, buildPlaceNarration, startNarration, stopNarration } from "../../utils/narration";
 import type { Receipt, ReceiptType } from "../../data/types";
 
 export default function StoryPanel() {
@@ -55,6 +56,7 @@ export default function StoryPanel() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         cancel.current = true;
+        stopNarration();
         select(null);
         selectEdge(null);
         selectPlace(null);
@@ -92,6 +94,7 @@ export default function StoryPanel() {
   async function followStory() {
     if (!path.length) return;
     cancel.current = false;
+    stopNarration();
     setStoryPlaying(true);
     for (const step of path) {
       if (cancel.current) break;
@@ -230,9 +233,23 @@ export default function StoryPanel() {
             )}
             <button
               type="button"
+              disabled={!selected && !selectedPlace}
+              onClick={() => {
+                if (selectedPlace && !selected) {
+                  startNarration(buildPlaceNarration(selectedPlace, receipts));
+                  return;
+                }
+                if (path.length) startNarration(buildMomentNarration(path));
+              }}
+              className="rounded-full bg-accent px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white disabled:opacity-40"
+            >
+              🔊 {storyPlaying ? "Telling your story" : "Tell the story"}
+            </button>
+            <button
+              type="button"
               disabled={storyPlaying || path.length < 2}
               onClick={() => void followStory()}
-              className="rounded-full bg-accent px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white disabled:opacity-40"
+              className="rounded-full border border-white/[0.12] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-mute disabled:opacity-40"
             >
               {storyPlaying ? "Following…" : "Follow the story →"}
             </button>

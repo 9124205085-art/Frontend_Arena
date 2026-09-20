@@ -206,3 +206,26 @@ body {
     animation: none;
   }
 }
+
+@keyframes narration-bar {
+  0%,
+  100% {
+    height: 4px;
+    opacity: 0.45;
+  }
+  50% {
+    height: 12px;
+    opacity: 1;
+  }
+}
+
+.narration-bar {
+  animation: narration-bar 0.9s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .narration-bar {
+    animation: none;
+    height: 8px;
+  }
+}

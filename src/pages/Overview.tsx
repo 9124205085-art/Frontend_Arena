@@ -1,5 +1,6 @@
 import { useLifeStore } from "../store";
 import { getOverview, getPatternTraceIds, getPatterns } from "../utils/analyzeData";
+import { startPatternNarration } from "../utils/narration";
 import MemoryNetwork from "../components/network/MemoryNetwork";
 import { CountUp } from "../components/ui";
 
@@ -66,30 +67,43 @@ export default function Overview() {
 
       <section className="mt-10">
         <h2 className="text-xl font-bold tracking-tight">Discoveries</h2>
-        <p className="mt-1 text-sm text-mute">Click to highlight the matching records on the network.</p>
+        <p className="mt-1 text-sm text-mute">Trace the pattern, or hear the archive explain it.</p>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           {discoveries.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => {
-                if (p.id === "explorer") {
-                  setNetworkMode("places");
-                  toNetwork();
-                  return;
-                }
-                if (p.id === "night-owl") setHourLens("night");
-                if (p.id === "rituals") setHourLens("evening");
-                applyTrace(getPatternTraceIds(receipts, p.id));
-                toNetwork();
-              }}
-              className="glass-card glow-border rounded-3xl p-5 text-left transition hover:-translate-y-0.5"
-            >
+            <article key={p.id} className="glass-card glow-border rounded-3xl p-5 text-left">
               <p className="text-2xl">{p.icon}</p>
               <h3 className="mt-3 text-lg font-bold">{p.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-mute">{p.body}</p>
-              <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-accent">{p.action}</p>
-            </button>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (p.id === "explorer") {
+                      setNetworkMode("places");
+                      toNetwork();
+                      return;
+                    }
+                    if (p.id === "night-owl") setHourLens("night");
+                    if (p.id === "rituals") setHourLens("evening");
+                    applyTrace(getPatternTraceIds(receipts, p.id));
+                    toNetwork();
+                  }}
+                  className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white"
+                >
+                  {p.action}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    startPatternNarration(p.id);
+                    toNetwork();
+                  }}
+                  className="rounded-full border border-accent/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent"
+                >
+                  🔊 Explain this
+                </button>
+              </div>
+            </article>
           ))}
         </div>
       </section>
