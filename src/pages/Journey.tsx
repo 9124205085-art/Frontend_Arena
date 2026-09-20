@@ -1,12 +1,13 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useLifeStore } from "../store";
-import { getClusters } from "../utils/analyzeData";
+import { getClusters, getConnections } from "../utils/analyzeData";
 import { TYPE_COLOR, TYPE_LABEL } from "../utils/constants";
 import { formatDay } from "../utils/format";
 import FilterChips from "../components/FilterChips";
 import MomentCard from "../components/MomentCard";
-import { getConnections } from "../utils/analyzeData";
+import { EmptyState, PageIntro } from "../components/ui";
+import type { ReceiptType } from "../data/types";
 
 export default function Journey() {
   const receipts = useLifeStore((s) => s.receipts);
@@ -30,20 +31,25 @@ export default function Journey() {
   const focus = clusters.find((c) => c.date === day) ?? clusters[0];
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 md:px-8">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-accent">Journey</p>
-      <h1 className="mt-2 text-4xl font-extrabold">Moments, clustered</h1>
-      <p className="mt-2 max-w-2xl text-mute">
+    <div className="mx-auto max-w-6xl px-4 py-10 md:px-8">
+      <PageIntro kicker="Journey" title="Moments, clustered">
         Not January then February. Days that gathered enough traces to become a scene.
-      </p>
-      <div className="mt-6">
+      </PageIntro>
+      <div className="mt-7">
         <FilterChips />
       </div>
+
+      {!focus && (
+        <EmptyState
+          title="No scenes in this filter"
+          body="Widen the categories or clear search to let the clusters come back."
+        />
+      )}
 
       {focus && (
         <section className="mt-10 rounded-3xl border border-white/[0.08] bg-[#0D0D12] p-6">
           <p className="text-[10px] uppercase tracking-[0.22em] text-mute">Moments around</p>
-          <h2 className="mt-1 text-2xl font-bold">{formatDay(focus.date)}</h2>
+          <h2 className="mt-1 text-2xl font-bold tracking-tight">{formatDay(focus.date)}</h2>
           <p className="text-sm text-mute">{focus.receipts.length} traces that share a calendar square</p>
           <Constellation receipts={focus.receipts} onOpen={select} />
         </section>
@@ -51,7 +57,7 @@ export default function Journey() {
 
       <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {clusters.slice(0, 18).map((c) => (
-          <div key={c.id} className="rounded-2xl border border-white/[0.08] bg-[#121218] p-4">
+          <div key={c.id} className="glass-card rounded-2xl p-4">
             <p className="text-xs uppercase tracking-[0.16em] text-mute">{formatDay(c.date)}</p>
             <p className="mt-1 text-lg font-semibold">{c.receipts.length} connected traces</p>
             <p className="mt-1 text-sm text-mute">{c.types.map((t) => TYPE_LABEL[t]).join(" · ")}</p>
@@ -76,30 +82,51 @@ function Constellation({
   receipts,
   onOpen,
 }: {
-  receipts: { id: string; title: string; type: keyof typeof TYPE_COLOR }[];
+  receipts: { id: string; title: string; type: ReceiptType }[];
   onOpen: (id: string) => void;
 }) {
   const n = receipts.length;
+  const pts = receipts.map((r, i) => {
+    const a = (i / n) * Math.PI * 2 - Math.PI / 2;
+    return { ...r, x: 50 + Math.cos(a) * 36, y: 50 + Math.sin(a) * 36 };
+  });
+
   return (
-    <div className="relative mx-auto mt-8 h-64 max-w-lg">
-      {receipts.map((r, i) => {
-        const a = (i / n) * Math.PI * 2 - Math.PI / 2;
-        const x = 50 + Math.cos(a) * 38;
-        const y = 50 + Math.sin(a) * 38;
-        return (
-          <button
-            key={r.id}
-            type="button"
-            title={r.title}
-            onClick={() => onOpen(r.id)}
-            className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-ink"
-            style={{ left: `${x}%`, top: `${y}%`, background: TYPE_COLOR[r.type] }}
-          >
-            {TYPE_LABEL[r.type]}
-          </button>
-        );
-      })}
-      <div className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-glow" />
+    <div className="relative mx-auto mt-8 h-72 max-w-lg">
+      <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" aria-hidden="true">
+        {pts.map((p, i) => {
+          const next = pts[(i + 1) % pts.length];
+          return (
+            <line
+              key={`${p.id}-line`}
+              x1={p.x}
+              y1={p.y}
+              x2={next.x}
+              y2={next.y}
+              stroke="#7C6BFF"
+              strokeOpacity="0.22"
+              strokeWidth="0.35"
+            />
+          );
+        })}
+        {pts.map((p) => (
+          <line key={`${p.id}-spoke`} x1="50" y1="50" x2={p.x} y2={p.y} stroke="#ffffff" strokeOpacity="0.08" strokeWidth="0.25" />
+        ))}
+      </svg>
+      {pts.map((r) => (
+        <button
+          key={r.id}
+          type="button"
+          title={r.title}
+          aria-label={r.title}
+          onClick={() => onOpen(r.id)}
+          className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-ink shadow-glow transition hover:scale-110"
+          style={{ left: `${r.x}%`, top: `${r.y}%`, background: TYPE_COLOR[r.type] }}
+        >
+          {TYPE_LABEL[r.type]}
+        </button>
+      ))}
+      <div className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-glow" />
     </div>
   );
 }

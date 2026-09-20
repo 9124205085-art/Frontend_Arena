@@ -9,12 +9,13 @@ export default function FilterChips() {
   const allOn = active.length === RECEIPT_TYPES.length;
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1">
+    <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filter by category">
       <button
         type="button"
         onClick={() => setTypes([...RECEIPT_TYPES])}
-        className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${
-          allOn ? "border-accent bg-accent/20 text-white" : "border-white/[0.08] text-mute"
+        aria-pressed={allOn}
+        className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] transition ${
+          allOn ? "border-accent bg-accent/20 text-white" : "border-white/[0.08] text-mute hover:text-white"
         }`}
       >
         All
@@ -26,10 +27,12 @@ export default function FilterChips() {
             key={t}
             type="button"
             onClick={() => toggle(t)}
-            className="shrink-0 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]"
+            aria-pressed={on || allOn}
+            className="shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition hover:brightness-125"
             style={{
               borderColor: on || allOn ? TYPE_COLOR[t] : "rgba(255,255,255,0.08)",
               color: on || allOn ? TYPE_COLOR[t] : "#9696A5",
+              background: on ? `${TYPE_COLOR[t]}18` : "transparent",
             }}
           >
             {TYPE_LABEL[t]}

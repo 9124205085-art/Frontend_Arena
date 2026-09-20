@@ -23,17 +23,24 @@ export default function App() {
 
   if (error) {
     return (
-      <div className="flex min-h-svh items-center justify-center bg-ink px-6 text-center">
-        <p className="text-xl text-mute">{error}</p>
+      <div className="grain flex min-h-svh items-center justify-center bg-ink px-6 text-center">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-accent">Archive unavailable</p>
+          <p className="mt-4 max-w-md text-xl text-mute">{error}</p>
+        </div>
       </div>
     );
   }
 
   if (!ready) {
     return (
-      <div className="flex min-h-svh flex-col items-center justify-center bg-ink">
+      <div className="grain flex min-h-svh flex-col items-center justify-center bg-ink">
+        <div className="relative mb-8 h-16 w-16">
+          <span className="animate-core absolute inset-0 rounded-full bg-accent/40 blur-xl" />
+          <span className="absolute inset-4 rounded-full bg-accent shadow-glow" />
+        </div>
         <p className="text-[10px] uppercase tracking-[0.32em] text-accent">Opening the archive</p>
-        <p className="mt-4 text-2xl font-bold">Gathering a life…</p>
+        <p className="mt-4 text-2xl font-bold tracking-tight">Gathering a life…</p>
       </div>
     );
   }

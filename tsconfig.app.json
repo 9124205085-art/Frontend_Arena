@@ -17,5 +17,24 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": [
+    "src/components/ChapterSection.tsx",
+    "src/components/ExploreMode.tsx",
+    "src/components/LandingScene.tsx",
+    "src/components/LeafParticleField.tsx",
+    "src/components/MobileCardStack.tsx",
+    "src/components/NavBar.tsx",
+    "src/components/ReceiptCard.tsx",
+    "src/components/SearchFilterBar.tsx",
+    "src/components/StoryMode.tsx",
+    "src/scene/AutumnCanvas.tsx",
+    "src/scene/ConnectionThreads.tsx",
+    "src/scene/ReceiptLeaves.tsx",
+    "src/scene/layout.ts",
+    "src/scene/leafGeometry.ts",
+    "src/scene/livePositions.ts",
+    "src/hooks/useWindAudio.ts",
+    "src/lib/storyThemes.ts"
+  ]
 }

@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import MemoryFallback from "./MemoryFallback";
 
 interface Props {
   children: ReactNode;
@@ -20,9 +21,7 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   render() {
-    if (this.state.err) {
-      return <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(124,107,255,0.2),_transparent_60%)]" />;
-    }
+    if (this.state.err) return <MemoryFallback />;
     return this.props.children;
   }
 }

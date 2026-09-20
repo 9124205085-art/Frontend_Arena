@@ -1,16 +1,32 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
 import Header from "./Header";
 import Sidebar, { BottomNav } from "./Sidebar";
 import ReceiptDrawer from "../components/ReceiptDrawer";
 
 export default function AppShell() {
+  const location = useLocation();
+
   return (
     <div className="grain flex min-h-svh bg-ink text-[#F5F5F7]">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-accent focus:px-4 focus:py-2"
+      >
+        Skip to content
+      </a>
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header />
-        <main className="flex-1 overflow-x-hidden pb-20 md:pb-8">
-          <Outlet />
+        <main id="main" className="flex-1 overflow-x-hidden pb-24 md:pb-10">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <Outlet />
+          </motion.div>
         </main>
       </div>
       <BottomNav />

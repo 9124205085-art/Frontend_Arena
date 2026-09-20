@@ -14,7 +14,8 @@ export default {
         sans: ['"Plus Jakarta Sans"', "system-ui", "sans-serif"],
       },
       boxShadow: {
-        glow: "0 0 40px rgba(124, 107, 255, 0.22)",
+        glow: "0 0 40px rgba(124, 107, 255, 0.28)",
+        soft: "0 24px 60px rgba(0, 0, 0, 0.35)",
       },
     },
   },

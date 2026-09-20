@@ -1,6 +1,7 @@
 import { TYPE_COLOR, TYPE_LABEL } from "../utils/constants";
 import { formatDay } from "../utils/format";
 import type { Receipt } from "../data/types";
+import { usePrefersReducedMotion } from "../hooks/usePrefersReducedMotion";
 
 export default function MomentCard({
   receipt,
@@ -11,25 +12,44 @@ export default function MomentCard({
   onOpen: () => void;
   connections?: number;
 }) {
+  const reduced = usePrefersReducedMotion();
+
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="glow-border group w-full rounded-2xl border border-white/[0.08] bg-[#121218] p-4 text-left transition hover:-translate-y-0.5"
+      onMouseMove={(e) => {
+        if (reduced) return;
+        const el = e.currentTarget;
+        const r = el.getBoundingClientRect();
+        const px = (e.clientX - r.left) / r.width - 0.5;
+        const py = (e.clientY - r.top) / r.height - 0.5;
+        el.style.transform = `perspective(900px) rotateX(${-py * 5}deg) rotateY(${px * 7}deg) translateY(-3px)`;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "";
+      }}
+      className="glow-border glass-card group w-full rounded-2xl p-4 text-left transition-[transform,box-shadow] duration-300 will-change-transform"
     >
       <span
-        className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink"
+        className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink"
         style={{ background: TYPE_COLOR[receipt.type] }}
       >
         {TYPE_LABEL[receipt.type]}
       </span>
-      <h3 className="mt-3 text-lg font-semibold leading-tight">{receipt.title}</h3>
-      <p className="mt-1 line-clamp-2 text-sm text-mute">{receipt.description}</p>
+      <h3 className="mt-3 text-lg font-semibold leading-tight tracking-tight">{receipt.title}</h3>
+      <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-mute">{receipt.description}</p>
       <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-mute">
         {formatDay(receipt.timestamp)}
         {receipt.location ? ` · ${receipt.location}` : ""}
       </p>
-      <p className="mt-2 text-xs text-accent">Connected moments: {connections}</p>
+      {receipt.tags.length > 0 && (
+        <p className="mt-2 line-clamp-1 text-[11px] text-mute/80">{receipt.tags.slice(0, 3).join(" · ")}</p>
+      )}
+      <p className="mt-3 text-xs font-medium text-accent">
+        {connections} connected moment{connections === 1 ? "" : "s"}
+        <span className="ml-2 opacity-0 transition group-hover:opacity-100">View →</span>
+      </p>
     </button>
   );
 }

@@ -1,9 +1,9 @@
-import { useMemo } from "react";
-import { useLifeStore } from "../store";
-import { neighborIds } from "../store";
-import { TYPE_COLOR } from "../utils/constants";
+import { useMemo, useState } from "react";
+import { useLifeStore, neighborIds } from "../store";
+import { TYPE_COLOR, TYPE_LABEL } from "../utils/constants";
 import { hashId } from "../utils/format";
 import FilterChips from "../components/FilterChips";
+import { EmptyState, PageIntro } from "../components/ui";
 
 export default function Connections() {
   const receipts = useLifeStore((s) => s.receipts);
@@ -11,6 +11,7 @@ export default function Connections() {
   const types = useLifeStore((s) => s.activeTypes);
   const selectedId = useLifeStore((s) => s.selectedId);
   const select = useLifeStore((s) => s.select);
+  const [hoverId, setHoverId] = useState<string | null>(null);
 
   const nodes = useMemo(
     () => receipts.filter((r) => types.includes(r.type)).slice(0, 72),
@@ -21,7 +22,8 @@ export default function Connections() {
     () => edges.filter((e) => ids.has(e.a) && ids.has(e.b)).slice(0, 90),
     [edges, ids],
   );
-  const neigh = selectedId ? new Set(neighborIds(selectedId, edges)) : null;
+  const focusId = selectedId ?? hoverId;
+  const neigh = focusId ? new Set(neighborIds(focusId, edges)) : null;
 
   const pos = useMemo(() => {
     const map = new Map<string, { x: number; y: number }>();
@@ -39,53 +41,87 @@ export default function Connections() {
   const selected = receipts.find((r) => r.id === selectedId);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 md:px-8">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-accent">The important page</p>
-      <h1 className="mt-2 text-4xl font-extrabold">Connections</h1>
-      <p className="mt-2 max-w-2xl text-mute">Some moments only make sense when you see them together.</p>
-      <div className="mt-6">
+    <div className="mx-auto max-w-6xl px-4 py-10 md:px-8">
+      <PageIntro kicker="The important page" title="Connections">
+        Some moments only make sense when you see them together.
+      </PageIntro>
+      <div className="mt-7">
         <FilterChips />
       </div>
 
-      <div className="mt-8 overflow-hidden rounded-3xl border border-white/[0.08] bg-[#0D0D12]">
-        <svg viewBox="0 0 100 100" className="h-[min(70vh,640px)] w-full">
-          {visEdges.map((e) => {
-            const a = pos.get(e.a);
-            const b = pos.get(e.b);
-            if (!a || !b) return null;
-            const hot = !selectedId || e.a === selectedId || e.b === selectedId;
-            return (
-              <line
-                key={`${e.a}-${e.b}-${e.reason}`}
-                x1={a.x}
-                y1={a.y}
-                x2={b.x}
-                y2={b.y}
-                stroke={hot ? "#7C6BFF" : "#ffffff"}
-                strokeOpacity={hot ? 0.55 : 0.06}
-                strokeWidth={hot ? 0.25 : 0.12}
-              />
-            );
-          })}
-          {nodes.map((n) => {
-            const p = pos.get(n.id);
-            if (!p) return null;
-            const dim = selectedId && selectedId !== n.id && !neigh?.has(n.id);
-            return (
-              <g key={n.id} onClick={() => select(n.id)} className="cursor-pointer">
-                <title>{n.title}</title>
-                <circle
-                  cx={p.x}
-                  cy={p.y}
-                  r={selectedId === n.id ? 1.6 : 1.05}
-                  fill={TYPE_COLOR[n.type]}
-                  opacity={dim ? 0.15 : 1}
+      {nodes.length === 0 ? (
+        <EmptyState title="The graph went quiet" body="Turn a category back on to watch the threads reappear." />
+      ) : (
+        <div className="mt-8 overflow-hidden rounded-3xl border border-white/[0.08] bg-[#0D0D12]">
+          <svg
+            viewBox="0 0 100 100"
+            className="h-[min(70vh,640px)] w-full"
+            onClick={() => select(null)}
+            role="img"
+            aria-label="Knowledge graph of connected receipts"
+          >
+            <defs>
+              <filter id="node-glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="0.6" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+            {visEdges.map((e) => {
+              const a = pos.get(e.a);
+              const b = pos.get(e.b);
+              if (!a || !b) return null;
+              const hot = !focusId || e.a === focusId || e.b === focusId;
+              return (
+                <line
+                  key={`${e.a}-${e.b}-${e.reason}`}
+                  x1={a.x}
+                  y1={a.y}
+                  x2={b.x}
+                  y2={b.y}
+                  stroke={hot ? "#8B7CFF" : "#ffffff"}
+                  strokeOpacity={hot ? 0.62 : 0.045}
+                  strokeWidth={hot ? 0.32 : 0.1}
+                  style={{ transition: "stroke-opacity 200ms ease" }}
                 />
-              </g>
-            );
-          })}
-        </svg>
-      </div>
+              );
+            })}
+            {nodes.map((n) => {
+              const p = pos.get(n.id);
+              if (!p) return null;
+              const dim = Boolean(focusId && focusId !== n.id && !neigh?.has(n.id));
+              const active = focusId === n.id;
+              return (
+                <g
+                  key={n.id}
+                  className="cursor-pointer"
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    select(n.id);
+                  }}
+                  onMouseEnter={() => setHoverId(n.id)}
+                  onMouseLeave={() => setHoverId(null)}
+                >
+                  <title>
+                    {n.title} · {TYPE_LABEL[n.type]}
+                  </title>
+                  <circle cx={p.x} cy={p.y} r={active ? 2.4 : 1.8} fill="transparent" />
+                  <circle
+                    cx={p.x}
+                    cy={p.y}
+                    r={active ? 1.7 : 1.05}
+                    fill={TYPE_COLOR[n.type]}
+                    opacity={dim ? 0.12 : 1}
+                    filter={active || (!dim && focusId) ? "url(#node-glow)" : undefined}
+                  />
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+      )}
       {selected && (
         <p className="mt-4 text-sm text-mute">
           {selected.title} · {neigh?.size ?? 0} connected receipts · 1 selected moment
