@@ -14,21 +14,25 @@ const SearchPage = lazy(() => import("./pages/Search"));
 
 function RouteFallback() {
   return (
-    <div className="flex min-h-[40vh] items-center justify-center text-sm text-mute" role="status">
-      Loading this view…
+    <div className="flex min-h-[40vh] flex-col items-center justify-center px-6 text-center" role="status">
+      <span className="mb-4 h-3 w-3 rounded-full bg-accent shadow-glow" />
+      <p className="text-base text-white/80">Opening this view…</p>
     </div>
   );
 }
 
 function ArchiveLoading() {
   return (
-    <div className="grain flex min-h-svh flex-col items-center justify-center bg-ink" role="status" aria-live="polite">
+    <div className="grain flex min-h-svh flex-col items-center justify-center bg-ink px-6 text-center" role="status" aria-live="polite">
       <div className="relative mb-8 h-16 w-16">
         <span className="animate-core absolute inset-0 rounded-full bg-accent/40 blur-xl" />
         <span className="absolute inset-4 rounded-full bg-accent shadow-glow" />
       </div>
-      <p className="text-[10px] uppercase tracking-[0.32em] text-accent">Reading official archives</p>
-      <p className="mt-4 text-2xl font-bold tracking-tight">Household, Spotify, India…</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.28em] text-accent">Reading official archives</p>
+      <p className="mt-4 text-2xl font-bold tracking-tight">Moments are connecting…</p>
+      <p className="mt-3 max-w-sm text-base leading-relaxed text-mute">
+        Each record becomes a dot. Relationships become lines. Then you can click a moment and follow the story.
+      </p>
     </div>
   );
 }
@@ -42,12 +46,13 @@ function ArchiveGate() {
     return (
       <div className="grain flex min-h-svh items-center justify-center bg-ink px-6 text-center" role="alert">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-accent">Archive unavailable</p>
-          <h1 className="mt-4 max-w-md text-xl font-bold text-mute">{error}</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">Archive unavailable</p>
+          <h1 className="mt-4 max-w-md text-2xl font-bold text-white">{error}</h1>
+          <p className="mt-3 text-base text-mute">The official CSV archives could not be read in this browser.</p>
           <button
             type="button"
             onClick={() => void load()}
-            className="mt-6 rounded-full bg-accent px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white"
+            className="mt-8 min-h-12 rounded-full bg-accent px-6 text-sm font-semibold text-white transition hover:brightness-110"
           >
             Try again
           </button>

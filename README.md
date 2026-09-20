@@ -43,7 +43,7 @@ Implemented in the current codebase:
 - **Follow the story** — silent camera walk along the connected path.
 - **Tell the story** — optional voice narration that highlights the same path. Never autoplays.
 - **Search** — header `/` shortcut; `/search` matches title, description, tags, location, type, timestamp, and selected extra fields. Arrow keys + Enter on results.
-- **Filtering** — category chips (only types present in the loaded archive), year rail, month rail, night/evening lenses from discoveries.
+- **Filtering** — category chips (only types present in the loaded archive), year and month selects inside **Refine this view**, night/evening lenses from discoveries.
 - **Journey** — `/journey` opens the network in time-layout mode.
 - **Insights / discoveries** — pattern cards with Trace / Explain this; derived at load from the archive.
 - **Chapters** — three chapters, one per official source (Spotify / household / India), shown on Discoveries.
@@ -274,7 +274,7 @@ These tests use small fixtures. They do not download the full production CSVs.
 Implemented (not a WCAG audit certificate):
 
 - `lang="en"` on `index.html`, skip-to-content link in `AppShell`
-- Buttons for interactive controls (stats, discoveries, filters, narration)
+- Buttons for interactive controls (discoveries, filters, layout modes, narration)
 - `:focus-visible` outline in `src/index.css`
 - Header search labelled; `/` focuses it when not typing in another field
 - Story panel: `role="dialog"`, `aria-modal`, labelled heading, **focus trap**, Escape closes, focus restored
@@ -373,13 +373,13 @@ Typography is editorial; the palette is dark and restrained. Neon is limited so 
 
 Suggested judge path (about two minutes):
 
-1. **Landing** — title, live counts from the loaded archive, “Enter the memory network”.
-2. **Home / Overview** — four interactive stats, then the Memory Network.
-3. Click a **node** — panel opens; connected moments list with reasons.
+1. **Landing** — title, three-line legend (dots, lines, click), “Enter the memory network”.
+2. **Home / Overview** — Memory Network first. Each colored dot is a moment; lines are relationships.
+3. Click a **dot** — it brightens, neighbors stay lit, story panel opens; connected moments list with reasons.
 4. Click a **connection line** — “Why are these connected?”
 5. **Follow the story** — camera walks the path.
 6. **Tell the story** — optional voice; dock shows pause/stop.
-7. **Discoveries** — Trace a pattern or Explain this; or Tell this chapter.
+7. **Discoveries** — Show on network or Explain this; or Tell this chapter.
 8. **Search** — `/`, type a song or place, Enter to focus it on the network.
 
 ---

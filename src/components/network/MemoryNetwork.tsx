@@ -5,6 +5,12 @@ import MemoryCanvas from "./MemoryCanvas";
 import NetworkFilters from "./NetworkFilters";
 import ConnectedMomentsList from "./ConnectedMomentsList";
 
+const MODE_LABEL = {
+  moments: "Moments",
+  places: "Places",
+  time: "Time",
+} as const;
+
 export default function MemoryNetwork({ hint }: { hint?: string }) {
   const {
     graph,
@@ -12,12 +18,10 @@ export default function MemoryNetwork({ hint }: { hint?: string }) {
     rfEdges,
     list,
     compact,
-    connected,
     years,
     mode,
     locs,
     filteredOn,
-    graphEmptyHint,
   } = useGraphModel();
   const setMode = useLifeStore((s) => s.setNetworkMode);
   const select = useLifeStore((s) => s.select);
@@ -49,27 +53,24 @@ export default function MemoryNetwork({ hint }: { hint?: string }) {
         ? `${selectedTitle} selected. Story details opened.`
         : "";
 
+  const graphEmpty = rfNodes.length === 0;
+
   return (
-    <div className="mt-5 min-w-0">
+    <div className="mt-4 min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">Memory network</h2>
-          <p className="mt-1 text-sm text-mute">
-            {hint ?? "Each dot is a moment. Lines show relationships. Click a moment to explore."}
-          </p>
-        </div>
+        {hint ? <p className="min-w-0 text-sm leading-relaxed text-white/80 sm:text-base">{hint}</p> : <span />}
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {filteredOn && (
             <button
               type="button"
               onClick={() => clearLenses()}
-              className="min-h-11 rounded-full border border-white/[0.08] px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-mute hover:text-white"
+              className="min-h-11 rounded-full border border-white/[0.08] px-4 text-sm font-semibold text-mute transition hover:border-white/30 hover:text-white"
             >
               Reset view
             </button>
           )}
           <div
-            className="flex min-h-11 gap-1 rounded-full border border-white/[0.08] p-1 text-[10px] font-semibold uppercase tracking-[0.14em]"
+            className="flex min-h-11 gap-1 rounded-full border border-white/[0.08] p-1 text-sm font-semibold"
             role="group"
             aria-label="Network layout"
           >
@@ -79,30 +80,33 @@ export default function MemoryNetwork({ hint }: { hint?: string }) {
                 type="button"
                 aria-pressed={mode === m}
                 onClick={() => setMode(m)}
-                className={`min-h-9 rounded-full px-3 ${mode === m ? "bg-accent text-white" : "text-mute hover:text-white"}`}
+                className={`min-h-9 rounded-full px-3 capitalize transition ${
+                  mode === m ? "bg-accent text-white" : "text-mute hover:bg-white/[0.06] hover:text-white"
+                }`}
               >
-                {m}
+                {MODE_LABEL[m]}
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      <NetworkFilters compact={compact} years={years} />
-
-      <p className="mt-3 text-xs text-mute">
-        Showing a connected sample of the archive
-        {selectedId
-          ? " · brighter nodes are linked to your selection"
-          : ` · ${connected.toLocaleString("en-IN")} receipts have at least one stored relationship`}
-        . {compact ? "Tap a moment or a line to open its story." : "Click a line to see why two moments connect."}
-      </p>
-
       <p className="sr-only" aria-live="polite">
         {announced}
       </p>
 
-      <MemoryCanvas graph={graph} rfNodes={rfNodes} rfEdges={rfEdges} compact={compact} empty={graphEmptyHint} />
+      <MemoryCanvas
+        graph={graph}
+        rfNodes={rfNodes}
+        rfEdges={rfEdges}
+        compact={compact}
+        empty={graphEmpty}
+        selected={Boolean(selectedId || selectedPlace)}
+        filtered={filteredOn}
+        onReset={filteredOn ? () => clearLenses() : undefined}
+      />
+
+      <NetworkFilters years={years} />
 
       <ConnectedMomentsList
         items={listItems}
@@ -113,6 +117,7 @@ export default function MemoryNetwork({ hint }: { hint?: string }) {
             ? `${listItems.length} places in this view`
             : `${listItems.length} connected moments in this view`
         }
+        onReset={filteredOn ? () => clearLenses() : undefined}
       />
     </div>
   );

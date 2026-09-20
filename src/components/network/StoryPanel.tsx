@@ -133,7 +133,7 @@ export default function StoryPanel() {
           >
           {sheet && <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-white/30" aria-hidden />}
           <div className="flex items-start justify-between gap-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-accent">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">
               {selectedPlace && !selected ? "Map the story" : "One connected moment"}
             </p>
             <button
@@ -184,7 +184,7 @@ export default function StoryPanel() {
               <p className="mt-3 text-2xl" aria-hidden>
                 {TYPE_ICON[selected.type]}
               </p>
-              <p className="text-[10px] uppercase tracking-[0.16em]" style={{ color: TYPE_COLOR[selected.type] }}>
+              <p className="text-xs uppercase tracking-[0.16em]" style={{ color: TYPE_COLOR[selected.type] }}>
                 {TYPE_LABEL[selected.type]}
               </p>
               <h2 id="story-title" className="mt-1 text-xl font-bold leading-tight">
@@ -200,7 +200,7 @@ export default function StoryPanel() {
 
           {why && (
             <div className="mt-4 rounded-xl border border-accent/30 bg-accent/10 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
                 {selectedEdge ? "Why are these connected?" : "Why this matters"}
               </p>
               <p className="mt-2 text-sm text-white">{why}</p>
@@ -209,7 +209,7 @@ export default function StoryPanel() {
 
           {path.length > 1 && (
             <div className="mt-4">
-              <p className="text-[10px] uppercase tracking-[0.16em] text-mute">Connected to</p>
+              <p className="text-xs uppercase tracking-[0.16em] text-mute">Connected to</p>
               <ol className="mt-2 space-y-2">
                 {path
                   .filter((r) => r.id !== selected?.id)
@@ -220,10 +220,10 @@ export default function StoryPanel() {
                         <button
                           type="button"
                           onClick={() => select(r.id)}
-                          className="min-h-11 w-full rounded-xl border border-white/[0.08] px-3 py-2 text-left text-sm hover:border-accent/40"
+                          className="min-h-11 w-full rounded-xl border border-white/[0.08] px-3 py-2 text-left text-sm transition hover:border-accent/40 hover:bg-white/[0.05]"
                         >
                           {TYPE_ICON[r.type]} {r.title}
-                          {edge ? <span className="mt-0.5 block text-[11px] text-mute">{edge.detail}</span> : null}
+                          {edge ? <span className="mt-0.5 block text-xs text-mute">{edge.detail}</span> : null}
                         </button>
                       </li>
                     );
@@ -243,7 +243,7 @@ export default function StoryPanel() {
               <button
                 type="button"
                 onClick={() => explorePlace(selectedPlace)}
-                className="min-h-11 rounded-full bg-accent px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white"
+                className="min-h-11 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
               >
                 Explore these moments →
               </button>
@@ -257,7 +257,7 @@ export default function StoryPanel() {
                   path,
                 })
               }
-              className="min-h-11 rounded-full bg-accent px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white disabled:opacity-40"
+              className="min-h-11 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
             >
               🔊 {storyPlaying ? "Telling your story" : "Tell the story"}
             </button>
@@ -265,7 +265,7 @@ export default function StoryPanel() {
               type="button"
               disabled={storyPlaying || path.length < 2}
               onClick={() => void followStory()}
-              className="min-h-11 rounded-full border border-white/[0.12] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-mute disabled:opacity-40"
+              className="min-h-11 rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-white/85 transition hover:border-accent/50 hover:text-white disabled:opacity-40"
             >
               {storyPlaying ? "Following…" : "Follow the story →"}
             </button>
@@ -273,7 +273,7 @@ export default function StoryPanel() {
               <button
                 type="button"
                 onClick={() => navigate(`/moment/${selected.id}`)}
-                className="min-h-11 rounded-full border border-white/[0.12] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-mute"
+                className="min-h-11 rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-white/85 transition hover:border-white/40 hover:text-white"
               >
                 Open sequence
               </button>
@@ -289,7 +289,7 @@ export default function StoryPanel() {
 function StorySpine({ path }: { path: Receipt[] }) {
   return (
     <div className="mt-4 rounded-xl border border-white/[0.08] px-3 py-3">
-      <p className="text-[10px] uppercase tracking-[0.16em] text-mute">The thread</p>
+      <p className="text-xs uppercase tracking-[0.16em] text-mute">The thread</p>
       <ol className="mt-2 space-y-1">
         {path.map((r, i) => (
           <li key={r.id} className="flex items-start gap-2 text-sm">

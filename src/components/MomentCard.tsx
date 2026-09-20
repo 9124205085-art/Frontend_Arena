@@ -32,23 +32,25 @@ export default function MomentCard({
       className="glow-border glass-card group min-h-11 w-full rounded-2xl p-4 text-left transition-[transform,box-shadow] duration-300 will-change-transform"
     >
       <span
-        className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink"
+        className="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.16em] text-ink"
         style={{ background: TYPE_COLOR[receipt.type] }}
       >
         {TYPE_LABEL[receipt.type]}
       </span>
       <h3 className="mt-3 text-lg font-semibold leading-tight tracking-tight">{receipt.title}</h3>
       <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-mute">{receipt.description}</p>
-      <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-mute">
+      <p className="mt-3 text-xs uppercase tracking-[0.14em] text-mute">
         {formatDay(receipt.timestamp)}
         {receipt.location ? ` · ${receipt.location}` : ""}
       </p>
       {receipt.tags.length > 0 && (
-        <p className="mt-2 line-clamp-1 text-[11px] text-mute/80">{receipt.tags.slice(0, 3).join(" · ")}</p>
+        <p className="mt-2 line-clamp-1 text-xs text-mute/80">{receipt.tags.slice(0, 3).join(" · ")}</p>
       )}
-      <p className="mt-3 text-xs font-medium text-accent">
-        {connections} connected moment{connections === 1 ? "" : "s"}
-        <span className="ml-2 opacity-0 transition group-hover:opacity-100">View →</span>
+      <p className="mt-3 text-sm font-semibold text-accent">
+        Show on network →
+        <span className="ml-2 font-medium text-mute">
+          {connections} linked
+        </span>
       </p>
     </button>
   );

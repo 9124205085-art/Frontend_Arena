@@ -12,13 +12,15 @@ export default function ConnectedMomentsList({
   selectedId,
   onSelect,
   heading,
-  hint = "Keyboard alternative to the canvas. Arrow keys move, Enter or Space selects.",
+  hint = "Keyboard list. Arrow keys move, Enter or Space opens the story.",
+  onReset,
 }: {
   items: ConnectedListItem[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   heading?: string;
   hint?: string;
+  onReset?: () => void;
 }) {
   const [active, setActive] = useState(0);
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -48,9 +50,20 @@ export default function ConnectedMomentsList({
       </h3>
       <p className="mt-1 text-xs text-mute">{hint}</p>
       {items.length === 0 ? (
-        <p className="mt-3 text-sm text-mute" role="status">
-          No connected moments in this view.
-        </p>
+        <div className="mt-3 rounded-2xl border border-white/[0.08] px-4 py-6 text-center">
+          <p className="text-sm text-mute" role="status">
+            No connected moments in this view.
+          </p>
+          {onReset && (
+            <button
+              type="button"
+              onClick={onReset}
+              className="mt-3 min-h-11 rounded-full bg-accent px-4 text-sm font-semibold text-white"
+            >
+              Reset view
+            </button>
+          )}
+        </div>
       ) : (
         <ul
           className="mt-3 max-h-48 space-y-1 overflow-y-auto rounded-2xl border border-white/[0.08] p-2"
@@ -84,13 +97,15 @@ export default function ConnectedMomentsList({
                     focusAt(items.length - 1);
                   }
                 }}
-                className={`flex min-h-11 w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm ${
-                  selectedId === item.id ? "bg-accent/20 text-white" : "text-mute hover:text-white"
+                className={`flex min-h-11 w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition ${
+                  selectedId === item.id
+                    ? "bg-accent/25 text-white ring-1 ring-accent"
+                    : "text-mute hover:bg-white/[0.06] hover:text-white"
                 }`}
               >
                 <span aria-hidden>{item.icon}</span>
                 <span className="min-w-0 flex-1 truncate">{item.title}</span>
-                <span className="shrink-0 text-[10px] uppercase tracking-wider">{item.typeLabel}</span>
+                <span className="shrink-0 text-xs uppercase tracking-wider">{item.typeLabel}</span>
               </button>
             </li>
           ))}

@@ -2,7 +2,7 @@ import { TYPE_COLOR, TYPE_ICON, TYPE_LABEL } from "../utils/constants";
 import { useLifeStore } from "../store";
 
 const chip =
-  "inline-flex min-h-11 shrink-0 items-center rounded-full border px-3.5 text-[11px] font-semibold uppercase tracking-[0.14em] transition";
+  "inline-flex min-h-11 shrink-0 items-center rounded-full border px-3.5 text-xs font-semibold uppercase tracking-[0.12em] transition";
 
 export default function FilterChips() {
   const active = useLifeStore((s) => s.activeTypes);
@@ -17,7 +17,7 @@ export default function FilterChips() {
         type="button"
         onClick={() => setTypes([...present])}
         aria-pressed={allOn}
-        className={`${chip} ${allOn ? "border-accent bg-accent/20 text-white" : "border-white/[0.08] text-mute hover:text-white"}`}
+        className={`${chip} ${allOn ? "border-accent bg-accent/20 text-white" : "border-white/[0.08] text-mute hover:border-white/25 hover:text-white"}`}
       >
         All
       </button>

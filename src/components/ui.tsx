@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { usePrefersReducedMotion } from "../hooks/usePrefersReducedMotion";
 
@@ -13,55 +13,10 @@ export function PageIntro({
 }) {
   return (
     <header className="max-w-3xl">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent sm:tracking-[0.36em]">{kicker}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent sm:tracking-[0.28em]">{kicker}</p>
       <h1 className="mt-3 text-[clamp(2rem,5vw,3.4rem)] font-extrabold leading-[0.95] tracking-[-0.04em]">{title}</h1>
-      {children ? <div className="mt-3 max-w-2xl text-[15px] leading-relaxed text-mute">{children}</div> : null}
+      {children ? <div className="mt-3 max-w-2xl text-base leading-relaxed text-mute">{children}</div> : null}
     </header>
-  );
-}
-
-export function CountUp({ value, className }: { value: number; className?: string }) {
-  const reduced = usePrefersReducedMotion();
-  const [n, setN] = useState(reduced ? value : 0);
-
-  useEffect(() => {
-    if (reduced) {
-      setN(value);
-      return;
-    }
-    const start = performance.now();
-    let frame = 0;
-    let running = true;
-    const tick = (now: number) => {
-      if (!running || document.visibilityState !== "visible") {
-        setN(value);
-        return;
-      }
-      const t = Math.min(1, (now - start) / 1100);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setN(Math.round(value * eased));
-      if (t < 1) frame = requestAnimationFrame(tick);
-    };
-    const onVis = () => {
-      if (document.visibilityState !== "visible") {
-        running = false;
-        cancelAnimationFrame(frame);
-        setN(value);
-      }
-    };
-    document.addEventListener("visibilitychange", onVis);
-    frame = requestAnimationFrame(tick);
-    return () => {
-      running = false;
-      cancelAnimationFrame(frame);
-      document.removeEventListener("visibilitychange", onVis);
-    };
-  }, [value, reduced]);
-
-  return (
-    <span className={className} aria-label={String(value)}>
-      {n.toLocaleString("en-IN")}
-    </span>
   );
 }
 
@@ -73,7 +28,7 @@ export function MagneticLink({ to, children }: { to: string; children: ReactNode
     <Link
       ref={ref}
       to={to}
-      className="magnetic-cta inline-flex min-h-11 w-full max-w-sm items-center justify-center rounded-full bg-accent px-6 py-3.5 text-sm font-semibold tracking-wide text-white shadow-glow transition-[filter,box-shadow] duration-300 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 sm:w-auto sm:px-8"
+      className="magnetic-cta inline-flex min-h-12 w-full max-w-sm items-center justify-center rounded-full bg-accent px-7 py-4 text-base font-semibold tracking-wide text-white shadow-glow transition-[filter,box-shadow,transform] duration-300 hover:brightness-125 hover:shadow-[0_0_32px_rgba(124,107,255,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 sm:w-auto sm:px-10"
       onMouseMove={(e) => {
         if (reduced || window.matchMedia("(pointer: coarse)").matches || !ref.current) return;
         const r = ref.current.getBoundingClientRect();
@@ -90,11 +45,20 @@ export function MagneticLink({ to, children }: { to: string; children: ReactNode
   );
 }
 
-export function EmptyState({ title, body }: { title: string; body: string }) {
+export function EmptyState({
+  title,
+  body,
+  action,
+}: {
+  title: string;
+  body: string;
+  action?: ReactNode;
+}) {
   return (
-    <div className="glass-card mt-10 rounded-3xl px-6 py-16 text-center">
-      <p className="text-lg font-semibold">{title}</p>
-      <p className="mx-auto mt-2 max-w-md text-sm text-mute">{body}</p>
+    <div className="mt-10 rounded-3xl border border-white/[0.08] bg-[#121218]/70 px-6 py-14 text-center">
+      <p className="text-xl font-semibold">{title}</p>
+      <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-mute">{body}</p>
+      {action ? <div className="mt-6 flex justify-center">{action}</div> : null}
     </div>
   );
 }

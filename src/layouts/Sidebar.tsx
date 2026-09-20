@@ -12,7 +12,7 @@ const LINKS = [
 export default function Sidebar() {
   return (
     <aside className="hidden h-svh w-52 shrink-0 flex-col border-r border-white/[0.08] bg-[#0D0D12]/90 px-3 py-6 backdrop-blur-xl md:flex lg:w-56 lg:px-4">
-      <Link to="/" className="px-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-mute transition hover:text-white">
+      <Link to="/" className="px-2 text-xs font-semibold uppercase tracking-[0.22em] text-mute transition hover:text-white">
         Life // Receipts
       </Link>
       <nav className="mt-8 flex flex-1 flex-col gap-1" aria-label="Primary">
@@ -23,7 +23,7 @@ export default function Sidebar() {
             className={({ isActive }) =>
               `flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
                 isActive
-                  ? "bg-white/[0.07] text-white shadow-[inset_0_0_0_1px_rgba(124,107,255,0.35)]"
+                  ? "bg-accent/20 text-white shadow-[inset_0_0_0_1px_rgba(124,107,255,0.55)]"
                   : "text-mute hover:bg-white/[0.04] hover:text-white"
               }`
             }
@@ -53,8 +53,8 @@ export function BottomNav() {
           key={label}
           to={to}
           className={({ isActive }) =>
-            `flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[9px] font-semibold uppercase tracking-wider sm:text-[10px] ${
-              isActive ? "text-white" : "text-mute"
+            `flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-semibold ${
+              isActive ? "bg-white/[0.08] text-white" : "text-mute hover:text-white"
             }`
           }
         >

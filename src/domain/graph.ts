@@ -128,8 +128,8 @@ export function layoutMoments(nodes: Receipt[], mode: NetworkMode): Map<string, 
     sorted.forEach((n, i) => {
       const col = i % 12;
       const row = Math.floor(i / 12);
-      const jitter = (hashId(n.id) % 40) - 20;
-      map.set(n.id, { x: 80 + col * 160, y: 60 + row * 110 + jitter * 0.3 });
+      const jitter = (hashId(n.id) % 28) - 14;
+      map.set(n.id, { x: 48 + col * 92, y: 40 + row * 78 + jitter * 0.3 });
     });
     return map;
   }
@@ -137,7 +137,7 @@ export function layoutMoments(nodes: Receipt[], mode: NetworkMode): Map<string, 
   nodes.forEach((n) => {
     const ring = 1 + (types.indexOf(n.type) % 4);
     const a = ((hashId(n.id) % 360) / 360) * Math.PI * 2;
-    const radius = 90 + ring * 95 + (hashId(n.id) % 40);
+    const radius = 70 + ring * 72 + (hashId(n.id) % 28);
     map.set(n.id, {
       x: 520 + Math.cos(a) * radius,
       y: 340 + Math.sin(a) * radius * 0.78,

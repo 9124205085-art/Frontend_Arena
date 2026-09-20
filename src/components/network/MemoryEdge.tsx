@@ -47,9 +47,9 @@ function MemoryEdgeInner({
       id={id}
       path={path}
       style={{
-        stroke: kind === "place" ? "#22D3EE" : hot ? "#8B7CFF" : "#3a3a4a",
-        strokeWidth: hot ? 2.2 : 1,
-        opacity: dimmed ? (kind === "place" ? 0.12 : 0.12) : kind === "place" ? 0.4 : 0.72,
+        stroke: kind === "place" ? "#22D3EE" : hot ? "#A99BFF" : "#4a4a5c",
+        strokeWidth: hot ? 2.8 : 1.35,
+        opacity: dimmed ? (kind === "place" ? 0.12 : 0.14) : kind === "place" ? 0.5 : 0.85,
       }}
     />
   );

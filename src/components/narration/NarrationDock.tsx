@@ -67,7 +67,7 @@ export default function NarrationDock() {
             🔊
           </button>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
               {active ? (
                 <span className="inline-flex items-center gap-2">
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
@@ -77,7 +77,7 @@ export default function NarrationDock() {
                 "Tell the story"
               )}
             </p>
-            {active ? <Waveform playing={n.isSpeaking && !n.isPaused} /> : <p className="mt-0.5 truncate text-[11px] text-mute">Voice from the records on screen</p>}
+            {active ? <Waveform playing={n.isSpeaking && !n.isPaused} /> : <p className="mt-0.5 truncate text-xs text-mute">Voice from the records on screen</p>}
           </div>
           <button
             type="button"
@@ -99,7 +99,7 @@ export default function NarrationDock() {
               />
             </div>
             {n.currentText ? (
-              <p className="mt-2 line-clamp-2 text-[11px] leading-relaxed text-mute" aria-live="polite">
+              <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-mute" aria-live="polite">
                 {n.currentText}
               </p>
             ) : null}
@@ -110,18 +110,18 @@ export default function NarrationDock() {
             ) : null}
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {n.isPaused ? (
-                <button type="button" onClick={() => n.resume()} className="inline-flex min-h-11 items-center rounded-full border border-white/10 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
+                <button type="button" onClick={() => n.resume()} className="inline-flex min-h-11 items-center rounded-full border border-white/10 px-3 text-sm font-semibold text-white transition hover:border-accent/40">
                   <Play size={11} className="mr-1 inline" /> Resume
                 </button>
               ) : (
-                <button type="button" onClick={() => n.pause()} className="inline-flex min-h-11 items-center rounded-full border border-white/10 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
+                <button type="button" onClick={() => n.pause()} className="inline-flex min-h-11 items-center rounded-full border border-white/10 px-3 text-sm font-semibold text-white transition hover:border-accent/40">
                   <Pause size={11} className="mr-1 inline" /> Pause
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => stopNarration()}
-                className="inline-flex min-h-11 items-center rounded-full border border-white/10 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-mute"
+                className="inline-flex min-h-11 items-center rounded-full border border-white/10 px-3 text-sm font-semibold text-mute transition hover:text-white"
               >
                 <Square size={10} className="mr-1 inline" /> Stop
               </button>
@@ -133,7 +133,7 @@ export default function NarrationDock() {
           <button
             type="button"
             onClick={tell}
-            className="mt-3 min-h-11 w-full rounded-full bg-accent px-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-white"
+            className="mt-3 min-h-11 w-full rounded-full bg-accent px-4 text-sm font-semibold text-white transition hover:brightness-110"
           >
             Tell the story
           </button>
@@ -142,12 +142,12 @@ export default function NarrationDock() {
         {openSettings && (
           <div className="mt-3 border-t border-white/[0.08] pt-3">
             {!n.supported && (
-              <p className="mb-2 text-[11px] leading-relaxed text-mute">
+              <p className="mb-2 text-xs leading-relaxed text-mute">
                 Voice narration isn't supported in this browser. You can still explore the story visually.
               </p>
             )}
             <label className="block">
-              <span className="text-[10px] uppercase tracking-[0.16em] text-mute">Voice</span>
+              <span className="text-xs uppercase tracking-[0.16em] text-mute">Voice</span>
               <select
                 value={n.voiceURI}
                 onChange={(e) => n.setVoiceURI(e.target.value)}
@@ -168,15 +168,15 @@ export default function NarrationDock() {
                   type="button"
                   aria-pressed={n.rate === r}
                   onClick={() => n.setRate(r)}
-                  className={`min-h-11 flex-1 rounded-full border text-[10px] font-semibold ${
-                    n.rate === r ? "border-accent text-white" : "border-white/10 text-mute"
+                  className={`min-h-11 flex-1 rounded-full border text-sm font-semibold ${
+                    n.rate === r ? "border-accent bg-accent/20 text-white" : "border-white/10 text-mute hover:text-white"
                   }`}
                 >
                   {r}x
                 </button>
               ))}
             </div>
-            <label className="mt-3 flex min-h-11 items-center gap-2 text-[10px] uppercase tracking-[0.14em] text-mute">
+            <label className="mt-3 flex min-h-11 items-center gap-2 text-xs uppercase tracking-[0.14em] text-mute">
               Volume {Math.round(n.volume * 100)}%
               <input
                 type="range"
@@ -190,7 +190,7 @@ export default function NarrationDock() {
             <button
               type="button"
               onClick={() => n.setEnabled(!n.enabled)}
-              className="mt-3 min-h-11 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent"
+              className="mt-3 min-h-11 text-sm font-semibold text-accent"
             >
               {n.enabled ? "Disable narration" : "Enable narration"}
             </button>

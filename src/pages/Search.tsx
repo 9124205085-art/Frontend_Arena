@@ -1,5 +1,5 @@
 import { useDeferredValue, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { neighborIds, useLifeStore } from "../store";
 import { searchReceipts } from "../domain/search";
 import { SUGGESTED_SEARCHES, TYPE_LABEL } from "../utils/constants";
@@ -78,7 +78,7 @@ export default function SearchPage() {
             key={s}
             type="button"
             onClick={() => setQuery(s)}
-            className="min-h-11 rounded-full border border-white/[0.08] px-3 text-xs text-mute transition hover:border-accent/40 hover:text-white"
+            className="min-h-11 rounded-full border border-white/[0.08] px-4 text-sm text-mute transition hover:border-accent/40 hover:text-white"
           >
             {s}
           </button>
@@ -90,9 +90,32 @@ export default function SearchPage() {
           : `The archive holds ${receipts.length.toLocaleString("en-IN")} official records. Search to browse them.`}
       </p>
       {!query.trim() ? (
-        <EmptyState title="Ask the dataset something" body="Results are filtered from the official household, Spotify, and India archives — not from invented receipts." />
+        <EmptyState
+          title="Ask the dataset something"
+          body="Type a place, a song, or a time of day — or tap a suggestion above. Results come from the official archives."
+          action={
+            <Link
+              to="/network"
+              className="inline-flex min-h-11 items-center rounded-full bg-accent px-5 text-sm font-semibold text-white transition hover:brightness-110"
+            >
+              Open the memory network →
+            </Link>
+          }
+        />
       ) : grouped.length === 0 ? (
-        <EmptyState title="Nothing matched" body="Try a place, a song, a time of day — or one of the suggested questions." />
+        <EmptyState
+          title="Nothing matched"
+          body="Try a place, a song, a time of day — or one of the suggested questions."
+          action={
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              className="min-h-11 rounded-full border border-white/20 px-5 text-sm font-semibold text-white transition hover:border-accent/50"
+            >
+              Clear search
+            </button>
+          }
+        />
       ) : (
         <div id="search-results" className="mt-6 space-y-8" role="listbox" aria-label="Search results">
           {grouped.map(([type, items]) => (

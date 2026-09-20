@@ -181,16 +181,22 @@ export default function MemoryCanvas({
   rfEdges,
   compact,
   empty,
+  selected,
+  filtered,
+  onReset,
 }: {
   graph: { visEdges: ConnectionEdge[] };
   rfNodes: Node[];
   rfEdges: Edge[];
   compact: boolean;
   empty: boolean;
+  selected: boolean;
+  filtered?: boolean;
+  onReset?: () => void;
 }) {
   return (
     <div
-      className="relative mt-4 h-[min(52dvh,420px)] overflow-hidden rounded-3xl border border-white/[0.08] bg-[#0B0B10] sm:h-[min(60vh,560px)] lg:h-[min(68vh,640px)]"
+      className="relative mt-4 h-[min(62dvh,520px)] overflow-hidden rounded-3xl border border-white/[0.1] bg-[#0B0B10] sm:h-[min(68vh,640px)] lg:h-[min(74vh,720px)]"
       role="region"
       aria-label="Memory network canvas"
     >
@@ -198,13 +204,35 @@ export default function MemoryCanvas({
       <ReactFlowProvider>
         <NetworkCanvas graph={graph} rfNodes={rfNodes} rfEdges={rfEdges} compact={compact} />
       </ReactFlowProvider>
-      <p className="pointer-events-none absolute left-3 top-3 max-w-[70%] text-[10px] uppercase tracking-[0.16em] text-mute sm:left-4 sm:top-4">
-        {compact ? "Drag to pan · pinch to zoom · tap a moment" : "Drag to pan · scroll to zoom · double-click to focus · Esc clears"}
-      </p>
-      {empty && (
-        <p className="pointer-events-none absolute inset-0 flex items-center justify-center px-4 text-center text-sm text-mute" role="status">
-          The archive has not loaded yet.
+      {!empty && (
+        <p className="pointer-events-none absolute left-3 top-3 max-w-[min(22rem,78%)] rounded-xl bg-[#0B0B10]/75 px-3 py-2 text-sm leading-snug text-white/90 backdrop-blur-sm sm:left-4 sm:top-4 sm:text-base">
+          {selected
+            ? "Brighter dots are linked to this moment. Follow a line to see why."
+            : compact
+              ? "Each dot is a moment. Tap one to open its story."
+              : "Each dot is a moment. Lines are relationships. Click a moment to explore."}
         </p>
+      )}
+      {empty && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-[#0B0B10]/80 px-4 text-center" role="status">
+          <p className="text-lg font-semibold text-white">
+            {filtered ? "No moments match this view." : "The archive has not loaded yet."}
+          </p>
+          <p className="max-w-sm text-base text-mute">
+            {filtered
+              ? "Clear the year, month, or pattern filter to bring the network back."
+              : "Official records become dots. Relationships become lines."}
+          </p>
+          {filtered && onReset ? (
+            <button
+              type="button"
+              onClick={onReset}
+              className="min-h-12 rounded-full bg-accent px-5 text-sm font-semibold text-white transition hover:brightness-110"
+            >
+              Reset view
+            </button>
+          ) : null}
+        </div>
       )}
     </div>
   );
