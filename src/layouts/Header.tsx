@@ -1,13 +1,24 @@
 import { Bell, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLifeStore } from "../store";
+import { useDebounced } from "../hooks/useDebounced";
 
 export default function Header() {
   const navigate = useNavigate();
   const query = useLifeStore((s) => s.query);
   const setQuery = useLifeStore((s) => s.setQuery);
+  const [draft, setDraft] = useState(query);
+  const debouncedDraft = useDebounced(draft, 180);
   const ref = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setDraft(query);
+  }, [query]);
+
+  useEffect(() => {
+    if (debouncedDraft !== useLifeStore.getState().query) setQuery(debouncedDraft);
+  }, [debouncedDraft, setQuery]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -31,10 +42,13 @@ export default function Header() {
         <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-mute" />
         <input
           ref={ref}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") navigate("/search");
+            if (e.key === "Enter") {
+              setQuery(draft);
+              navigate("/search");
+            }
           }}
           placeholder="Search your life…  /"
           className="w-full rounded-full border border-white/[0.08] bg-[#121218]/90 py-2.5 pl-9 pr-4 text-sm outline-none placeholder:text-mute/80 transition focus:border-accent/50 focus:shadow-[0_0_0_4px_rgba(124,107,255,0.12)]"

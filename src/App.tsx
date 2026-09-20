@@ -1,10 +1,10 @@
 import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary";
-import AppShell from "./layouts/AppShell";
 import Landing from "./pages/Landing";
 import { useLifeStore } from "./store";
 
+const AppShell = lazy(() => import("./layouts/AppShell"));
 const Overview = lazy(() => import("./pages/Overview"));
 const Journey = lazy(() => import("./pages/Journey"));
 const Network = lazy(() => import("./pages/Network"));
@@ -20,14 +20,23 @@ function RouteFallback() {
   );
 }
 
-export default function App() {
-  const load = useLifeStore((s) => s.load);
+function ArchiveLoading() {
+  return (
+    <div className="grain flex min-h-svh flex-col items-center justify-center bg-ink" role="status" aria-live="polite">
+      <div className="relative mb-8 h-16 w-16">
+        <span className="animate-core absolute inset-0 rounded-full bg-accent/40 blur-xl" />
+        <span className="absolute inset-4 rounded-full bg-accent shadow-glow" />
+      </div>
+      <p className="text-[10px] uppercase tracking-[0.32em] text-accent">Reading official archives</p>
+      <p className="mt-4 text-2xl font-bold tracking-tight">Household, Spotify, India…</p>
+    </div>
+  );
+}
+
+function ArchiveGate() {
   const ready = useLifeStore((s) => s.ready);
   const error = useLifeStore((s) => s.error);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const load = useLifeStore((s) => s.load);
 
   if (error) {
     return (
@@ -47,18 +56,21 @@ export default function App() {
     );
   }
 
-  if (!ready) {
-    return (
-      <div className="grain flex min-h-svh flex-col items-center justify-center bg-ink" role="status" aria-live="polite">
-        <div className="relative mb-8 h-16 w-16">
-          <span className="animate-core absolute inset-0 rounded-full bg-accent/40 blur-xl" />
-          <span className="absolute inset-4 rounded-full bg-accent shadow-glow" />
-        </div>
-        <p className="text-[10px] uppercase tracking-[0.32em] text-accent">Reading official archives</p>
-        <p className="mt-4 text-2xl font-bold tracking-tight">Household, Spotify, India…</p>
-      </div>
-    );
-  }
+  if (!ready) return <ArchiveLoading />;
+
+  return (
+    <Suspense fallback={<RouteFallback />}>
+      <AppShell />
+    </Suspense>
+  );
+}
+
+export default function App() {
+  const load = useLifeStore((s) => s.load);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   return (
     <ErrorBoundary>
@@ -66,7 +78,7 @@ export default function App() {
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/" element={<Landing />} />
-            <Route element={<AppShell />}>
+            <Route element={<ArchiveGate />}>
               <Route path="/overview" element={<Overview />} />
               <Route path="/journey" element={<Journey />} />
               <Route path="/network" element={<Network />} />

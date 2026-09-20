@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 import { useLifeStore } from "../../store";
 import { TYPE_COLOR, TYPE_ICON, TYPE_LABEL } from "../../utils/constants";
 import { formatWhen } from "../../utils/format";
-import { edgesFor, otherId } from "../../data/connectionEngine";
+import { otherId } from "../../data/connectionEngine";
 import { buildStoryPath } from "../../utils/networkGraph";
 import { buildMomentNarration, buildPlaceNarration, startNarration, stopNarration } from "../../utils/narration";
 import type { Receipt, ReceiptType } from "../../data/types";
@@ -15,8 +15,9 @@ export default function StoryPanel() {
   const selectedId = useLifeStore((s) => s.selectedId);
   const selectedEdge = useLifeStore((s) => s.selectedEdge);
   const selectedPlace = useLifeStore((s) => s.selectedPlace);
-  const receipts = useLifeStore((s) => s.receipts);
-  const edges = useLifeStore((s) => s.edges);
+  const selected = useLifeStore((s) => (s.selectedId ? (s.receiptById.get(s.selectedId) ?? null) : null));
+  const links = useLifeStore((s) => (s.selectedId ? (s.edgesByNode.get(s.selectedId) ?? []) : []));
+  const locationStats = useLifeStore((s) => s.locationStats);
   const select = useLifeStore((s) => s.select);
   const selectEdge = useLifeStore((s) => s.selectEdge);
   const selectPlace = useLifeStore((s) => s.selectPlace);
@@ -24,33 +25,23 @@ export default function StoryPanel() {
   const storyPlaying = useLifeStore((s) => s.storyPlaying);
   const setStoryPlaying = useLifeStore((s) => s.setStoryPlaying);
   const setToast = useLifeStore((s) => s.setToast);
-  const selected = receipts.find((r) => r.id === selectedId);
-  const links = selected ? edgesFor(selected.id, edges) : [];
   const cancel = useRef(false);
 
-  const path = useMemo(
-    () => (selected ? buildStoryPath(selected, receipts, edges, 5) : []),
-    [selected, receipts, edges],
-  );
+  const path = useMemo(() => {
+    if (!selected) return [];
+    const { receipts, edges } = useLifeStore.getState();
+    return buildStoryPath(selected, receipts, edges, 5);
+  }, [selected]);
 
   const placeMix = useMemo(() => {
     if (!selectedPlace) return null;
-    let count = 0;
-    const byType: Partial<Record<ReceiptType, number>> = {};
-    for (const r of receipts) {
-      if (r.location !== selectedPlace) continue;
-      count += 1;
-      byType[r.type] = (byType[r.type] ?? 0) + 1;
-    }
-    return { count, byType };
-  }, [selectedPlace, receipts]);
+    const hit = locationStats.find((l) => l.location === selectedPlace);
+    return hit ? { count: hit.count, byType: hit.byType } : null;
+  }, [selectedPlace, locationStats]);
 
-  const locCount = useMemo(() => {
-    if (!selected?.location) return 0;
-    let n = 0;
-    for (const r of receipts) if (r.location === selected.location) n += 1;
-    return n;
-  }, [selected?.location, receipts]);
+  const locCount = selected?.location
+    ? (locationStats.find((l) => l.location === selected.location)?.count ?? 0)
+    : 0;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -245,7 +236,7 @@ export default function StoryPanel() {
               disabled={!selected && !selectedPlace}
               onClick={() => {
                 if (selectedPlace && !selected) {
-                  startNarration(buildPlaceNarration(selectedPlace, receipts));
+                  startNarration(buildPlaceNarration(selectedPlace, useLifeStore.getState().receipts));
                   return;
                 }
                 if (path.length) startNarration(buildMomentNarration(path));

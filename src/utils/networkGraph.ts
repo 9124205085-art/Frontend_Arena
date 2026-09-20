@@ -14,8 +14,13 @@ export interface GraphFilter {
   hourLens: HourLens;
   location: string | null;
   traceIds: string[] | null;
-  query: string;
+  query?: string;
 }
+
+export type GraphIndexes = {
+  byId?: Map<string, Receipt>;
+  edgesByNode?: Map<string, ConnectionEdge[]>;
+};
 
 function degreeMap(edges: ConnectionEdge[]): Map<string, number> {
   const d = new Map<string, number>();
@@ -32,10 +37,6 @@ function passesLens(r: Receipt, f: GraphFilter): boolean {
   if (f.location && r.location !== f.location) return false;
   if (f.hourLens === "night" && !(hourOf(r.timestamp) >= 22 || hourOf(r.timestamp) <= 1)) return false;
   if (f.hourLens === "evening" && hourOf(r.timestamp) < 18) return false;
-  if (f.query) {
-    const blob = `${r.title} ${r.description} ${r.tags.join(" ")} ${r.location || ""}`.toLowerCase();
-    if (!blob.includes(f.query.toLowerCase())) return false;
-  }
   return true;
 }
 
@@ -49,28 +50,45 @@ export function pickGraphReceipts(
   edges: ConnectionEdge[],
   f: GraphFilter,
   limit = 96,
+  indexes?: GraphIndexes,
 ): { nodes: Receipt[]; visEdges: ConnectionEdge[]; relatedKeep: Set<string> } {
-  const deg = degreeMap(edges);
+  const byId = indexes?.byId ?? new Map(receipts.map((r) => [r.id, r]));
+  const deg = indexes?.edgesByNode ? null : degreeMap(edges);
+  const degreeOf = (id: string) => indexes?.edgesByNode?.get(id)?.length ?? deg?.get(id) ?? 0;
   const allOn = f.types.length === f.presentTypes.length;
-  let pool = receipts.filter((r) => passesLens(r, f));
+
+  let pool: Receipt[];
   if (f.traceIds?.length) {
-    const allow = new Set(f.traceIds);
-    pool = pool.filter((r) => allow.has(r.id));
+    pool = [];
+    for (const id of f.traceIds) {
+      const r = byId.get(id);
+      if (r && passesLens(r, f)) pool.push(r);
+    }
+  } else {
+    pool = receipts.filter((r) => passesLens(r, f));
   }
 
   const primary = allOn ? pool : pool.filter((r) => f.types.includes(r.type));
-  const ranked = [...primary].sort((a, b) => (deg.get(b.id) ?? 0) - (deg.get(a.id) ?? 0) || a.timestamp.localeCompare(b.timestamp));
+  const ranked = primary.sort((a, b) => degreeOf(b.id) - degreeOf(a.id) || a.timestamp.localeCompare(b.timestamp));
   const seed = ranked.slice(0, Math.min(64, limit));
   const keep = new Set(seed.map((r) => r.id));
   const relatedKeep = new Set<string>();
 
-  for (const e of edges) {
-    if (keep.has(e.a) && !keep.has(e.b)) relatedKeep.add(e.b);
-    if (keep.has(e.b) && !keep.has(e.a)) relatedKeep.add(e.a);
+  if (indexes?.edgesByNode) {
+    for (const id of keep) {
+      const list = indexes.edgesByNode.get(id);
+      if (!list) continue;
+      for (const e of list) relatedKeep.add(otherId(e, id));
+    }
+  } else {
+    for (const e of edges) {
+      if (keep.has(e.a) && !keep.has(e.b)) relatedKeep.add(e.b);
+      if (keep.has(e.b) && !keep.has(e.a)) relatedKeep.add(e.a);
+    }
   }
 
-  const byId = new Map(receipts.map((r) => [r.id, r]));
   for (const id of relatedKeep) {
+    if (keep.has(id)) continue;
     const r = byId.get(id);
     if (!r || !passesLens(r, { ...f, types: f.presentTypes, traceIds: null })) continue;
     keep.add(id);
@@ -79,7 +97,25 @@ export function pickGraphReceipts(
 
   const nodes = [...keep].map((id) => byId.get(id)).filter(Boolean) as Receipt[];
   const ids = new Set(nodes.map((n) => n.id));
-  const visEdges = edges.filter((e) => ids.has(e.a) && ids.has(e.b));
+  const visEdges: ConnectionEdge[] = [];
+  const seen = new Set<string>();
+  if (indexes?.edgesByNode) {
+    for (const n of nodes) {
+      const list = indexes.edgesByNode.get(n.id);
+      if (!list) continue;
+      for (const e of list) {
+        if (!ids.has(e.a) || !ids.has(e.b)) continue;
+        const key = e.a < e.b ? `${e.a}|${e.b}|${e.reason}` : `${e.b}|${e.a}|${e.reason}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        visEdges.push(e);
+      }
+    }
+  } else {
+    for (const e of edges) {
+      if (ids.has(e.a) && ids.has(e.b)) visEdges.push(e);
+    }
+  }
   return { nodes, visEdges, relatedKeep };
 }
 

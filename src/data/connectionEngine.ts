@@ -220,6 +220,22 @@ export function edgesFor(id: string, edges: ConnectionEdge[]): ConnectionEdge[] 
   return edges.filter((e) => e.a === id || e.b === id);
 }
 
+/**
+ * One pass over the edge list so neighbor lookups are O(degree), not O(all edges).
+ */
+export function buildEdgeIndex(edges: ConnectionEdge[]): Map<string, ConnectionEdge[]> {
+  const index = new Map<string, ConnectionEdge[]>();
+  for (const edge of edges) {
+    const a = index.get(edge.a);
+    if (a) a.push(edge);
+    else index.set(edge.a, [edge]);
+    const b = index.get(edge.b);
+    if (b) b.push(edge);
+    else index.set(edge.b, [edge]);
+  }
+  return index;
+}
+
 export function otherId(edge: ConnectionEdge, id: string): string {
   return edge.a === id ? edge.b : edge.a;
 }

@@ -8,7 +8,12 @@ export function dayStamp(iso: string): string {
 }
 
 export function hourOf(iso: string): number {
-  return new Date(iso).getHours();
+  if (iso.length >= 13 && iso.charAt(10) === "T") {
+    const h = Number(iso.slice(11, 13));
+    if (h >= 0 && h <= 23) return h;
+  }
+  const parsed = new Date(iso).getHours();
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 export function getCategoryStats(receipts: Receipt[]) {
@@ -350,12 +355,31 @@ export function searchReceipts(query: string, receipts: Receipt[], limit = 80): 
   for (const r of receipts) {
     if (nightHours && (hourOf(r.timestamp) >= 22 || hourOf(r.timestamp) <= 1)) {
       out.push(r);
-    } else {
-      const blob =
-        `${r.title} ${r.description} ${r.tags.join(" ")} ${r.location || ""} ${r.type} ${r.mood || ""} ${r.timestamp} ${r.extra?.artist || ""} ${r.extra?.merchant || ""} ${r.extra?.person || ""} ${r.extra?.category || ""} ${r.source}`.toLowerCase();
-      if (blob.includes(q) || extra.some((k) => blob.includes(k))) out.push(r);
+    } else if (receiptMatchesQuery(r, q, extra)) {
+      out.push(r);
     }
     if (out.length >= limit) break;
   }
   return out;
+}
+
+function receiptMatchesQuery(r: Receipt, q: string, extra: string[]): boolean {
+  if (fieldHas(r.title, q) || r.type.includes(q) || r.source.includes(q)) return true;
+  if (r.location && fieldHas(r.location, q)) return true;
+  if (r.mood && r.mood.includes(q)) return true;
+  if (r.timestamp.includes(q)) return true;
+  const extraFields = r.extra;
+  if (extraFields) {
+    if (fieldHas(String(extraFields.artist || ""), q)) return true;
+    if (fieldHas(String(extraFields.merchant || ""), q)) return true;
+    if (fieldHas(String(extraFields.person || ""), q)) return true;
+    if (fieldHas(String(extraFields.category || ""), q)) return true;
+  }
+  if (r.tags.some((tag) => tag.includes(q))) return true;
+  if (fieldHas(r.description, q)) return true;
+  return extra.some((token) => receiptMatchesQuery(r, token, []));
+}
+
+function fieldHas(value: string, q: string): boolean {
+  return Boolean(value) && value.toLowerCase().includes(q);
 }

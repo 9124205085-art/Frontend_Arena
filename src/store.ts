@@ -1,12 +1,9 @@
-import { useMemo } from "react";
 import { create } from "zustand";
 import { otherId } from "./data/connectionEngine";
-import { loadOfficialArchive } from "./data/dataLoader";
 import type { Chapter, ConnectionEdge, Receipt, ReceiptType } from "./data/types";
-import { searchReceipts, type Pattern } from "./utils/analyzeData";
-import { logDatasetReport } from "./utils/validateDataset";
+import type { Pattern } from "./utils/analyzeData";
 import type { HourLens, NetworkMode } from "./utils/networkGraph";
-import { getLocationStats, getOverview } from "./utils/analyzeData";
+import type { getLocationStats, getOverview } from "./utils/analyzeData";
 
 type OverviewStats = ReturnType<typeof getOverview>;
 type LocationStat = ReturnType<typeof getLocationStats>[number];
@@ -16,6 +13,8 @@ interface LifeState {
   error: string | null;
   receipts: Receipt[];
   edges: ConnectionEdge[];
+  receiptById: Map<string, Receipt>;
+  edgesByNode: Map<string, ConnectionEdge[]>;
   chapters: Chapter[];
   presentTypes: ReceiptType[];
   selectedId: string | null;
@@ -59,6 +58,8 @@ export const useLifeStore = create<LifeState>((set, get) => ({
   error: null,
   receipts: [],
   edges: [],
+  receiptById: new Map(),
+  edgesByNode: new Map(),
   chapters: [],
   presentTypes: [],
   selectedId: null,
@@ -81,11 +82,17 @@ export const useLifeStore = create<LifeState>((set, get) => ({
 
   load: async () => {
     try {
+      const [{ loadOfficialArchive }, { indexArchive }] = await Promise.all([
+        import("./data/dataLoader"),
+        import("./lib/archiveIndex"),
+      ]);
       const bundle = await loadOfficialArchive();
-      logDatasetReport(bundle.receipts, { connections: bundle.edges.length, chapters: bundle.chapters.length });
+      const indexed = indexArchive(bundle.receipts, bundle.edges);
       set({
         receipts: bundle.receipts,
         edges: bundle.edges,
+        receiptById: indexed.receiptById,
+        edgesByNode: indexed.edgesByNode,
         chapters: bundle.chapters,
         presentTypes: bundle.presentTypes,
         activeTypes: bundle.presentTypes,
@@ -140,10 +147,12 @@ export const useLifeStore = create<LifeState>((set, get) => ({
       networkMode: "moments",
     }),
   explorePlace: (loc) => {
-    const ids = get()
-      .receipts.filter((r) => r.location === loc)
-      .slice(0, 96)
-      .map((r) => r.id);
+    const ids: string[] = [];
+    for (const r of get().receipts) {
+      if (r.location !== loc) continue;
+      ids.push(r.id);
+      if (ids.length >= 96) break;
+    }
     set({
       locationLens: loc,
       selectedPlace: loc,
@@ -171,20 +180,9 @@ export const useLifeStore = create<LifeState>((set, get) => ({
   setToast: (toast) => set({ toast }),
 }));
 
-export function useVisibleReceipts(): Receipt[] {
-  const receipts = useLifeStore((s) => s.receipts);
-  const query = useLifeStore((s) => s.query);
-  const types = useLifeStore((s) => s.activeTypes);
-  return useMemo(() => {
-    const typed = receipts.filter((r) => types.includes(r.type));
-    if (!query.trim()) return typed;
-    const found = new Set(searchReceipts(query, typed, 400).map((r) => r.id));
-    return typed.filter((r) => found.has(r.id));
-  }, [receipts, query, types]);
-}
-
-export const useFilteredReceipts = useVisibleReceipts;
-
-export function neighborIds(id: string, edges: ConnectionEdge[]): string[] {
+export function neighborIds(id: string, edges?: ConnectionEdge[]): string[] {
+  const indexed = useLifeStore.getState().edgesByNode.get(id);
+  if (indexed) return indexed.map((e) => otherId(e, id));
+  if (!edges) return [];
   return edges.filter((e) => e.a === id || e.b === id).map((e) => otherId(e, id));
 }

@@ -284,17 +284,19 @@ Gaps that remain: no full screen-reader QA pass, no jsx-a11y ESLint plugin (peer
 
 Implemented optimizations:
 
-- Archive parse/connect/insight work runs in a **module Web Worker**, 120s timeout, then main-thread fallback
-- Overview, patterns, years, and top location stats are **computed once at load** and stored
-- Graph **layout** is memoized separately from selection highlighting
+- Archive parse/connect/insight work runs in a **module Web Worker**, 120s timeout, then a dynamically imported main-thread fallback (not on the first paint)
+- Landing and `AppShell` are split: the hero can render while the archive is still parsing
+- Overview, patterns, years, and top location stats are **computed once at load** and stored, with `receiptById` / `edgesByNode` indexes
+- Memory Network **geometry is independent of selection**. Clicking a node updates highlight state inside node/edge components; React Flow does not rebuild positions
 - Graph sample: 96 nodes desktop, **48 on mobile**; related types kept when filtering
 - Connection detector is capped (see §6)
-- `React.lazy` for Overview, Journey, Network, Discoveries, Search, Moment, and `MemoryUniverse`
-- Landing 3D uses `frameloop="never"` while `document.hidden`
-- Search results are **capped** (40 on the search page)
-- Reduced motion skips the heavy landing scene
+- `React.lazy` / `Suspense` for AppShell, Overview, Journey, Network, Discoveries, Search, Moment, and `MemoryUniverse`
+- Landing 3D pauses when `document.visibilityState !== "visible"` or the canvas is off-screen (`IntersectionObserver`); geometries dispose on unmount
+- Header search is **debounced**; the search page uses `useDeferredValue`; field checks stop at the result cap
+- Reduced motion skips the heavy landing scene; mobile skips grain overlay and uses fewer graph/3D particles
+- Google Fonts load only weights 400, 600, and 800
 
-Honest limits: the Spotify CSV is a large static asset; first load still transfers and parses the official files in the browser. The canvas cannot draw every row.
+Honest limits: the Spotify CSV is a large static asset; first load still transfers and parses the official files in the browser. The canvas cannot draw every row. The Three.js landing chunk remains large and is loaded only when 3D is shown.
 
 ---
 

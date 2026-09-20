@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { useLifeStore } from "../store";
 import { getPatternTraceIds } from "../utils/analyzeData";
 import { startPatternNarration } from "../utils/narration";
@@ -7,14 +6,14 @@ import { CountUp } from "../components/ui";
 
 export default function Overview() {
   const receipts = useLifeStore((s) => s.receipts);
-  const edges = useLifeStore((s) => s.edges);
+  const edgesByNode = useLifeStore((s) => s.edgesByNode);
+  const connected = edgesByNode.size;
   const stats = useLifeStore((s) => s.overview);
   const discoveries = useLifeStore((s) => s.patterns).slice(0, 3);
   const clearLenses = useLifeStore((s) => s.clearLenses);
   const setNetworkMode = useLifeStore((s) => s.setNetworkMode);
   const setHourLens = useLifeStore((s) => s.setHourLens);
   const applyTrace = useLifeStore((s) => s.applyTrace);
-  const connected = useMemo(() => new Set(edges.flatMap((e) => [e.a, e.b])).size, [edges]);
 
   const toNetwork = () => document.getElementById("network-anchor")?.scrollIntoView({ behavior: "smooth" });
 
@@ -58,7 +57,12 @@ export default function Overview() {
           value={connected}
           hint="Receipts with at least one stored relationship"
           onClick={() => {
-            applyTrace([...new Set(edges.flatMap((e) => [e.a, e.b]))].slice(0, 400));
+            const ids: string[] = [];
+            for (const id of edgesByNode.keys()) {
+              ids.push(id);
+              if (ids.length >= 400) break;
+            }
+            applyTrace(ids);
             toNetwork();
           }}
         />

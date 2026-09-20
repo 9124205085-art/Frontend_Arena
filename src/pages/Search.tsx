@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { neighborIds, useLifeStore } from "../store";
 import { searchReceipts } from "../utils/analyzeData";
@@ -9,13 +9,16 @@ import { EmptyState, PageIntro } from "../components/ui";
 export default function SearchPage() {
   const navigate = useNavigate();
   const receipts = useLifeStore((s) => s.receipts);
-  const edges = useLifeStore((s) => s.edges);
   const query = useLifeStore((s) => s.query);
   const setQuery = useLifeStore((s) => s.setQuery);
   const applyTrace = useLifeStore((s) => s.applyTrace);
   const [active, setActive] = useState(0);
+  const deferredQuery = useDeferredValue(query);
 
-  const results = useMemo(() => (query.trim() ? searchReceipts(query, receipts, 40) : []), [query, receipts]);
+  const results = useMemo(
+    () => (deferredQuery.trim() ? searchReceipts(deferredQuery, receipts, 40) : []),
+    [deferredQuery, receipts],
+  );
   const grouped = useMemo(() => {
     const m = new Map<string, typeof results>();
     for (const r of results) {
@@ -27,7 +30,7 @@ export default function SearchPage() {
   }, [results]);
 
   function openResult(id: string) {
-    applyTrace([id, ...neighborIds(id, edges)]);
+    applyTrace([id, ...neighborIds(id)]);
     navigate("/network");
   }
 
@@ -97,7 +100,7 @@ export default function SearchPage() {
                     <MomentCard
                       receipt={r}
                       onOpen={() => openResult(r.id)}
-                      connections={neighborIds(r.id, edges).length}
+                      connections={neighborIds(r.id).length}
                     />
                   </div>
                 ))}

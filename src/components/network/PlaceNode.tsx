@@ -1,22 +1,24 @@
 import { memo } from "react";
 import { Handle, NodeToolbar, Position, type NodeProps } from "@xyflow/react";
+import { useLifeStore } from "../../store";
 
 export type PlaceNodeData = {
   location: string;
   count: number;
   mix: string;
-  dim: boolean;
-  active: boolean;
 };
 
 function PlaceNodeInner({ data }: NodeProps) {
   const d = data as PlaceNodeData;
+  const selectedPlace = useLifeStore((s) => s.selectedPlace);
+  const active = selectedPlace === d.location;
+  const dim = Boolean(selectedPlace && !active);
   return (
     <div
       className={`rounded-full border px-3 py-3 text-center shadow-soft transition duration-300 ${
-        d.active
-          ? "border-cyan-300 bg-[#102026] shadow-glow scale-105"
-          : d.dim
+        active
+          ? "z-10 border-cyan-300 bg-[#102026] shadow-glow scale-105"
+          : dim
             ? "opacity-25"
             : "border-cyan-400/30 bg-[#101820] hover:border-cyan-300/50"
       }`}

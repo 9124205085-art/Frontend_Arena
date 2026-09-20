@@ -1,10 +1,10 @@
-import { lazy, Suspense } from "react";
-import { motion } from "framer-motion";
+import { lazy, Suspense, useMemo } from "react";
 import ErrorBoundary from "../components/ErrorBoundary";
 import MemoryFallback from "../components/MemoryFallback";
 import { CountUp, MagneticLink } from "../components/ui";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { usePrefersReducedMotion } from "../hooks/usePrefersReducedMotion";
+import { universePayload } from "../scene/universePayload";
 import { useLifeStore } from "../store";
 
 const MemoryUniverse = lazy(() => import("../scene/MemoryUniverse"));
@@ -15,14 +15,18 @@ export default function Landing() {
   const mobile = useIsMobile();
   const reduced = usePrefersReducedMotion();
   const stats = useLifeStore((s) => s.overview);
-  const show3d = !mobile && !reduced;
+  const show3d = !mobile && !reduced && receipts.length > 0;
+  const payload = useMemo(
+    () => (show3d ? universePayload(receipts, edges, false) : null),
+    [show3d, receipts, edges],
+  );
 
   return (
     <div className="grain vignette relative min-h-svh overflow-hidden bg-ink">
-      {show3d ? (
+      {show3d && payload ? (
         <ErrorBoundary>
           <Suspense fallback={<MemoryFallback />}>
-            <MemoryUniverse receipts={receipts} edges={edges} mobile={false} />
+            <MemoryUniverse payload={payload} mobile={false} />
           </Suspense>
         </ErrorBoundary>
       ) : (
@@ -30,55 +34,28 @@ export default function Landing() {
       )}
 
       <div className="relative z-10 flex min-h-svh flex-col items-center justify-center px-6 text-center">
-        <motion.p
-          initial={{ opacity: 0, letterSpacing: "0.6em" }}
-          animate={{ opacity: 1, letterSpacing: "0.42em" }}
-          transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
-          className="text-[10px] font-semibold uppercase text-accent"
-        >
-          A digital memory museum
-        </motion.p>
+        <p className="landing-fade text-[10px] font-semibold uppercase tracking-[0.42em] text-accent">A digital memory museum</p>
 
-        <motion.h1
-          initial={{ opacity: 0, y: 28, filter: "blur(12px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          transition={{ delay: 0.18, duration: 1, ease: [0.22, 1, 0.36, 1] }}
-          className="mt-6 max-w-5xl text-[clamp(3rem,11vw,7.6rem)] font-extrabold leading-[0.86] tracking-[-0.055em]"
-        >
+        <h1 className="landing-fade landing-delay-1 mt-6 max-w-5xl text-[clamp(3rem,11vw,7.6rem)] font-extrabold leading-[0.86] tracking-[-0.055em]">
           YOUR LIFE,
           <br />
           IN RECEIPTS.
-        </motion.h1>
+        </h1>
 
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45, duration: 0.7 }}
-          className="mt-7 max-w-lg text-lg leading-relaxed text-mute"
-        >
+        <p className="landing-fade landing-delay-2 mt-7 max-w-lg text-lg leading-relaxed text-mute">
           Small moments. Hidden connections. One story.
-        </motion.p>
+        </p>
 
-        <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.62, duration: 0.7 }}
-          className="mt-12 flex flex-wrap justify-center gap-10 text-[11px] font-semibold uppercase tracking-[0.22em] text-mute"
-        >
+        <div className="landing-fade landing-delay-3 mt-12 flex flex-wrap justify-center gap-10 text-[11px] font-semibold uppercase tracking-[0.22em] text-mute">
           <Stat n={stats?.total ?? 0} label="Moments" />
           <Stat n={stats?.categories ?? 0} label="Categories" />
           <Stat n={stats?.months ?? 0} label="Months" />
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.85, duration: 0.6 }}
-          className="mt-14"
-        >
+        <div className="landing-fade landing-delay-4 mt-14">
           <MagneticLink to="/overview">Enter the memory network →</MagneticLink>
           <p className="mt-5 text-xs tracking-wide text-mute">Click a moment. Follow its connections. Discover the story.</p>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

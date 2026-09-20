@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectConnections } from "./connectionEngine";
+import { detectConnections, buildEdgeIndex, otherId } from "./connectionEngine";
 import type { Receipt } from "./types";
 
 function rec(partial: Partial<Receipt> & Pick<Receipt, "id" | "timestamp" | "type">): Receipt {
@@ -47,5 +47,18 @@ describe("detectConnections", () => {
 
   it("does not invent edges for a single isolated receipt", () => {
     expect(detectConnections([rec({ id: "solo", type: "note", timestamp: "2020-01-01T00:00:00" })])).toEqual([]);
+  });
+});
+
+describe("buildEdgeIndex", () => {
+  it("returns neighbors without scanning the full list twice", () => {
+    const edges = detectConnections([
+      rec({ id: "a", type: "music", timestamp: "2020-01-01T23:48:00", title: "Song" }),
+      rec({ id: "b", type: "place", timestamp: "2020-01-01T23:56:00", title: "Beach", location: "Marina" }),
+    ]);
+    const index = buildEdgeIndex(edges);
+    const fromA = index.get("a") ?? [];
+    expect(fromA.length).toBeGreaterThan(0);
+    expect(fromA.some((e) => otherId(e, "a") === "b")).toBe(true);
   });
 });

@@ -31,14 +31,31 @@ export function CountUp({ value, className }: { value: number; className?: strin
     }
     const start = performance.now();
     let frame = 0;
+    let running = true;
     const tick = (now: number) => {
+      if (!running || document.visibilityState !== "visible") {
+        setN(value);
+        return;
+      }
       const t = Math.min(1, (now - start) / 1100);
       const eased = 1 - Math.pow(1 - t, 3);
       setN(Math.round(value * eased));
       if (t < 1) frame = requestAnimationFrame(tick);
     };
+    const onVis = () => {
+      if (document.visibilityState !== "visible") {
+        running = false;
+        cancelAnimationFrame(frame);
+        setN(value);
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
     frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      running = false;
+      cancelAnimationFrame(frame);
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, [value, reduced]);
 
   return (

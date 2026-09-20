@@ -9,10 +9,10 @@ import { formatWhen } from "../utils/format";
 export default function Moment() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const seed = useLifeStore((s) => (id ? (s.receiptById.get(id) ?? null) : null));
   const receipts = useLifeStore((s) => s.receipts);
   const edges = useLifeStore((s) => s.edges);
   const applyTrace = useLifeStore((s) => s.applyTrace);
-  const seed = receipts.find((r) => r.id === id);
 
   const seq = useMemo(() => {
     if (!seed) return [];
@@ -97,7 +97,7 @@ export default function Moment() {
           <button
             type="button"
             onClick={() => {
-              applyTrace([seed.id, ...neighborIds(seed.id, edges), ...seq.map((r) => r.id)]);
+              applyTrace([seed.id, ...neighborIds(seed.id), ...seq.map((r) => r.id)]);
               navigate("/network");
             }}
             className="rounded-full bg-accent px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.16em] text-white"

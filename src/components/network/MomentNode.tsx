@@ -2,26 +2,30 @@ import { memo } from "react";
 import { Handle, NodeToolbar, Position, type NodeProps } from "@xyflow/react";
 import { TYPE_COLOR, TYPE_ICON, TYPE_LABEL } from "../../utils/constants";
 import type { ReceiptType } from "../../data/types";
+import { useLifeStore } from "../../store";
 
 export type MomentNodeData = {
   title: string;
   type: ReceiptType;
   when: string;
   preview: string;
-  dim: boolean;
-  active: boolean;
 };
 
-function MomentNodeInner({ data }: NodeProps) {
+function MomentNodeInner({ id, data }: NodeProps) {
   const d = data as MomentNodeData;
   const color = TYPE_COLOR[d.type];
+  const active = useLifeStore((s) => s.selectedId === id);
+  const dim = useLifeStore((s) => {
+    if (!s.selectedId || s.selectedId === id) return false;
+    return !s.edgesByNode.get(s.selectedId)?.some((e) => e.a === id || e.b === id);
+  });
 
   return (
     <div
       className={`group relative rounded-2xl border px-2.5 py-2 shadow-soft transition duration-300 ${
-        d.active
-          ? "border-accent bg-[#16161f] shadow-glow scale-[1.04]"
-          : d.dim
+        active
+          ? "z-10 border-accent bg-[#16161f] shadow-glow scale-[1.04]"
+          : dim
             ? "border-white/[0.06] bg-[#101016] opacity-25"
             : "border-white/[0.1] bg-[#14141c] hover:border-white/20"
       }`}

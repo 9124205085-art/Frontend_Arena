@@ -17,23 +17,24 @@ import type { ConnectionEdge } from "../../data/types";
 import FilterChips from "../FilterChips";
 import { MomentNode } from "./MomentNode";
 import { PlaceNode } from "./PlaceNode";
+import { MemoryEdge } from "./MemoryEdge";
 import { useIsMobile } from "../../hooks/useIsMobile";
+import { usePrefersReducedMotion } from "../../hooks/usePrefersReducedMotion";
 
 const nodeTypes = { moment: MomentNode, place: PlaceNode };
+const edgeTypes = { memory: MemoryEdge };
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-function edgeData(e: { detail: string; a?: string; b?: string; reason?: string }): Record<string, unknown> {
-  return { ...e };
-}
-
-function NetworkCanvas() {
-  const receipts = useLifeStore((s) => s.receipts);
-  const edges = useLifeStore((s) => s.edges);
-  const types = useLifeStore((s) => s.activeTypes);
-  const present = useLifeStore((s) => s.presentTypes);
+function NetworkCanvas({
+  graph,
+  rfNodes,
+  rfEdges,
+}: {
+  graph: ReturnType<typeof pickGraphReceipts>;
+  rfNodes: Node[];
+  rfEdges: Edge[];
+}) {
   const selectedId = useLifeStore((s) => s.selectedId);
-  const selectedEdge = useLifeStore((s) => s.selectedEdge);
-  const selectedPlace = useLifeStore((s) => s.selectedPlace);
   const select = useLifeStore((s) => s.select);
   const selectEdge = useLifeStore((s) => s.selectEdge);
   const selectPlace = useLifeStore((s) => s.selectPlace);
@@ -43,110 +44,8 @@ function NetworkCanvas() {
   const hourLens = useLifeStore((s) => s.hourLens);
   const locationLens = useLifeStore((s) => s.locationLens);
   const traceIds = useLifeStore((s) => s.traceIds);
-  const query = useLifeStore((s) => s.query);
-  const locs = useLifeStore((s) => s.locationStats);
-  const mobile = useIsMobile();
+  const types = useLifeStore((s) => s.activeTypes);
   const { fitView } = useReactFlow();
-
-  const graph = useMemo(
-    () =>
-      pickGraphReceipts(
-        receipts,
-        edges,
-        {
-          types,
-          presentTypes: present,
-          year,
-          month,
-          hourLens,
-          location: locationLens,
-          traceIds,
-          query,
-        },
-        mobile ? 48 : 96,
-      ),
-    [receipts, edges, types, present, year, month, hourLens, locationLens, traceIds, query, mobile],
-  );
-
-  const positions = useMemo(() => {
-    if (mode === "places") return layoutPlaces(locs);
-    return layoutMoments(graph.nodes, mode);
-  }, [mode, locs, graph.nodes]);
-
-  const rfNodes: Node[] = useMemo(() => {
-    if (mode === "places") {
-      return locs.map((l) => ({
-        id: `place::${l.location}`,
-        type: "place",
-        position: positions.get(l.location) ?? { x: 0, y: 0 },
-        zIndex: selectedPlace === l.location ? 8 : 1,
-        data: {
-          location: l.location,
-          count: l.count,
-          mix: Object.entries(l.byType)
-            .map(([t, n]) => `${TYPE_LABEL[t as keyof typeof TYPE_LABEL]} ${n}`)
-            .join(" · "),
-          dim: Boolean(selectedPlace && selectedPlace !== l.location),
-          active: selectedPlace === l.location,
-        },
-      }));
-    }
-    const neigh = selectedId ? new Set(neighborIds(selectedId, edges)) : null;
-    return graph.nodes.map((n) => {
-      const dim = Boolean(selectedId && selectedId !== n.id && !neigh?.has(n.id));
-      return {
-        id: n.id,
-        type: "moment",
-        position: positions.get(n.id) ?? { x: 0, y: 0 },
-        zIndex: selectedId === n.id ? 10 : dim ? 0 : 2,
-        data: {
-          title: n.title,
-          type: n.type,
-          when: formatDay(n.timestamp),
-          preview: n.description,
-          dim,
-          active: selectedId === n.id,
-        },
-      };
-    });
-  }, [mode, locs, graph.nodes, positions, selectedPlace, selectedId, edges]);
-
-  const rfEdges: Edge[] = useMemo(() => {
-    if (mode === "places") {
-      return placeCooccurrence(
-        receipts,
-        locs.map((l) => l.location),
-      ).map((e, i) => ({
-        id: `pl-${i}`,
-        source: `place::${e.a}`,
-        target: `place::${e.b}`,
-        animated: Boolean(selectedPlace && (selectedPlace === e.a || selectedPlace === e.b)),
-        style: {
-          stroke: "#22D3EE",
-          strokeOpacity: selectedPlace && selectedPlace !== e.a && selectedPlace !== e.b ? 0.12 : 0.4,
-        },
-        data: edgeData(e),
-      }));
-    }
-    return graph.visEdges.map((e) => {
-      const hot =
-        selectedId === e.a ||
-        selectedId === e.b ||
-        Boolean(selectedEdge && selectedEdge.a === e.a && selectedEdge.b === e.b);
-      return {
-        id: `${e.a}|${e.b}|${e.reason}`,
-        source: e.a,
-        target: e.b,
-        animated: Boolean(hot),
-        style: {
-          stroke: hot ? "#8B7CFF" : "#3a3a4a",
-          strokeWidth: hot ? 2.2 : 1,
-          opacity: selectedId && !hot ? 0.12 : 0.72,
-        },
-        data: edgeData(e),
-      };
-    });
-  }, [mode, locs, graph.visEdges, selectedId, selectedEdge, selectedPlace, receipts]);
 
   useEffect(() => {
     if (useLifeStore.getState().selectedId) return;
@@ -154,21 +53,21 @@ function NetworkCanvas() {
       void fitView({ duration: 380, padding: 0.28 });
     }, 60);
     return () => window.clearTimeout(t);
-  }, [mode, year, month, hourLens, locationLens, types, traceIds, query, fitView]);
+  }, [mode, year, month, hourLens, locationLens, types, traceIds, fitView]);
 
   useEffect(() => {
     if (!selectedId || mode === "places") return;
     const t = window.setTimeout(() => {
-      const neigh = neighborIds(selectedId, edges).map((id) => ({ id }));
+      const neigh = neighborIds(selectedId).slice(0, 8).map((id) => ({ id }));
       void fitView({
-        nodes: [{ id: selectedId }, ...neigh.slice(0, 8)],
+        nodes: [{ id: selectedId }, ...neigh],
         duration: 520,
         padding: 1.15,
         maxZoom: 1.35,
       });
     }, 40);
     return () => window.clearTimeout(t);
-  }, [selectedId, fitView, mode, edges]);
+  }, [selectedId, fitView, mode]);
 
   const onNodeClick = useCallback(
     (_: unknown, node: Node) => {
@@ -211,18 +110,24 @@ function NetworkCanvas() {
     selectPlace(null);
   }, [select, selectEdge, selectPlace]);
 
+  const onNodeDoubleClick = useCallback(
+    (_: unknown, node: Node) => {
+      const ids = node.type === "place" ? [node.id] : [node.id, ...neighborIds(node.id)];
+      void fitView({ nodes: ids.slice(0, 10).map((id) => ({ id })), duration: 450, padding: 0.7, maxZoom: 1.55 });
+    },
+    [fitView],
+  );
+
   return (
     <ReactFlow
       nodes={rfNodes}
       edges={rfEdges}
       nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
       onNodeClick={onNodeClick}
       onEdgeClick={onEdgeClick}
       onPaneClick={onPaneClick}
-      onNodeDoubleClick={(_, node) => {
-        const ids = node.type === "place" ? [node.id] : [node.id, ...neighborIds(node.id, edges).map((id) => id)];
-        void fitView({ nodes: ids.slice(0, 10).map((id) => ({ id })), duration: 450, padding: 0.7, maxZoom: 1.55 });
-      }}
+      onNodeDoubleClick={onNodeDoubleClick}
       fitView
       minZoom={0.22}
       maxZoom={2.2}
@@ -232,6 +137,8 @@ function NetworkCanvas() {
       nodesConnectable={false}
       edgesReconnectable={false}
       zoomOnDoubleClick={false}
+      onlyRenderVisibleElements
+      elevateNodesOnSelect={false}
       proOptions={{ hideAttribution: true }}
       className="memory-flow"
     >
@@ -242,9 +149,13 @@ function NetworkCanvas() {
 }
 
 function Dust() {
+  const mobile = useIsMobile();
+  const reduced = usePrefersReducedMotion();
+  const count = reduced ? 0 : mobile ? 6 : 10;
+  if (!count) return null;
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-      {Array.from({ length: 16 }, (_, i) => (
+      {Array.from({ length: count }, (_, i) => (
         <span
           key={i}
           className="network-dust absolute h-1 w-1 rounded-full bg-white/25"
@@ -269,6 +180,8 @@ export default function MemoryNetwork({ hint }: { hint?: string }) {
   const setMonth = useLifeStore((s) => s.setMonth);
   const receipts = useLifeStore((s) => s.receipts);
   const edges = useLifeStore((s) => s.edges);
+  const receiptById = useLifeStore((s) => s.receiptById);
+  const edgesByNode = useLifeStore((s) => s.edgesByNode);
   const years = useLifeStore((s) => s.years);
   const select = useLifeStore((s) => s.select);
   const selectedId = useLifeStore((s) => s.selectedId);
@@ -277,22 +190,82 @@ export default function MemoryNetwork({ hint }: { hint?: string }) {
   const hourLens = useLifeStore((s) => s.hourLens);
   const locationLens = useLifeStore((s) => s.locationLens);
   const traceIds = useLifeStore((s) => s.traceIds);
-  const query = useLifeStore((s) => s.query);
-  const connected = useMemo(() => new Set(edges.flatMap((e) => [e.a, e.b])).size, [edges]);
-  const list = useMemo(
+  const connected = edgesByNode.size;
+  const indexes = useMemo(() => ({ byId: receiptById, edgesByNode }), [receiptById, edgesByNode]);
+  const mobile = useIsMobile();
+  const locs = useLifeStore((s) => s.locationStats);
+  const graph = useMemo(
     () =>
-      pickGraphReceipts(receipts, edges, {
-        types,
-        presentTypes: present,
-        year,
-        month,
-        hourLens,
-        location: locationLens,
-        traceIds,
-        query,
-      }).nodes.slice(0, 20),
-    [receipts, edges, types, present, year, month, hourLens, locationLens, traceIds, query],
+      pickGraphReceipts(
+        receipts,
+        edges,
+        {
+          types,
+          presentTypes: present,
+          year,
+          month,
+          hourLens,
+          location: locationLens,
+          traceIds,
+        },
+        mobile ? 48 : 96,
+        indexes,
+      ),
+    [receipts, edges, types, present, year, month, hourLens, locationLens, traceIds, indexes, mobile],
   );
+  const list = graph.nodes.slice(0, 20);
+  const positions = useMemo(() => {
+    if (mode === "places") return layoutPlaces(locs);
+    return layoutMoments(graph.nodes, mode);
+  }, [mode, locs, graph.nodes]);
+  const rfNodes: Node[] = useMemo(() => {
+    if (mode === "places") {
+      return locs.map((l) => ({
+        id: `place::${l.location}`,
+        type: "place",
+        position: positions.get(l.location) ?? { x: 0, y: 0 },
+        data: {
+          location: l.location,
+          count: l.count,
+          mix: Object.entries(l.byType)
+            .map(([t, n]) => `${TYPE_LABEL[t as keyof typeof TYPE_LABEL]} ${n}`)
+            .join(" · "),
+        },
+      }));
+    }
+    return graph.nodes.map((n) => ({
+      id: n.id,
+      type: "moment",
+      position: positions.get(n.id) ?? { x: 0, y: 0 },
+      data: {
+        title: n.title,
+        type: n.type,
+        when: formatDay(n.timestamp),
+        preview: n.description,
+      },
+    }));
+  }, [mode, locs, graph.nodes, positions]);
+  const rfEdges: Edge[] = useMemo(() => {
+    if (mode === "places") {
+      return placeCooccurrence(
+        receipts,
+        locs.map((l) => l.location),
+      ).map((e, i) => ({
+        id: `pl-${i}`,
+        type: "memory",
+        source: `place::${e.a}`,
+        target: `place::${e.b}`,
+        data: { a: e.a, b: e.b, detail: e.detail, kind: "place" },
+      }));
+    }
+    return graph.visEdges.map((e) => ({
+      id: `${e.a}|${e.b}|${e.reason}`,
+      type: "memory",
+      source: e.a,
+      target: e.b,
+      data: { a: e.a, b: e.b, reason: e.reason, detail: e.detail },
+    }));
+  }, [mode, locs, graph.visEdges, receipts]);
   const clearLenses = useLifeStore((s) => s.clearLenses);
   const graphEmptyHint = receipts.length === 0;
 
@@ -398,7 +371,7 @@ export default function MemoryNetwork({ hint }: { hint?: string }) {
       <div className="relative mt-4 h-[min(68vh,640px)] overflow-hidden rounded-3xl border border-white/[0.08] bg-[#0B0B10]">
         <Dust />
         <ReactFlowProvider>
-          <NetworkCanvas />
+          <NetworkCanvas graph={graph} rfNodes={rfNodes} rfEdges={rfEdges} />
         </ReactFlowProvider>
         <p className="pointer-events-none absolute left-4 top-4 text-[10px] uppercase tracking-[0.2em] text-mute">
           Drag to pan · scroll to zoom · double-click to focus · Esc clears
