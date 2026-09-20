@@ -11,17 +11,6 @@
   --text: #f5f5f7;
   --muted: #9696a5;
   --accent: #7c6bff;
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-top: env(safe-area-inset-top, 0px);
-  --nav-h: 0px;
-  --dock-h: 0px;
-  --touch: 44px;
-}
-
-@media (max-width: 767px) {
-  :root {
-    --nav-h: calc(3.85rem + var(--safe-bottom));
-  }
 }
 
 html {
@@ -32,15 +21,13 @@ html,
 body,
 #root {
   min-height: 100%;
-  min-height: 100dvh;
   background: var(--bg);
   color: var(--text);
-  overflow-x: clip;
 }
 
 body {
   margin: 0;
-  overflow-x: clip;
+  overflow-x: hidden;
   font-family: "Plus Jakarta Sans", system-ui, sans-serif;
   font-feature-settings: "ss01" on, "cv11" on;
   background:
@@ -49,22 +36,13 @@ body {
     var(--bg);
 }
 
-button,
-a,
-[role="button"],
-input,
-select,
-summary {
-  touch-action: manipulation;
-}
-
 ::selection {
   background: rgba(124, 107, 255, 0.35);
   color: #fff;
 }
 
 :focus-visible {
-  outline: 2px solid rgba(167, 155, 255, 1);
+  outline: 2px solid rgba(124, 107, 255, 0.85);
   outline-offset: 3px;
 }
 
@@ -111,11 +89,6 @@ summary {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 18px 40px rgba(0, 0, 0, 0.28);
-  transition: border-color 0.2s ease, background-color 0.2s ease;
-}
-
-.glass-card:hover {
-  border-color: rgba(124, 107, 255, 0.4);
 }
 
 .glow-border {
@@ -201,9 +174,6 @@ summary {
   background: #121218;
 }
 .memory-flow .react-flow__controls-button {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
   background: #121218;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   fill: #f5f5f7;
@@ -211,32 +181,8 @@ summary {
 .memory-flow .react-flow__controls-button:hover {
   background: #1a1a24;
 }
-.memory-flow .react-flow__node,
-.memory-flow .react-flow__edge {
-  cursor: pointer;
-}
 .memory-flow .react-flow__edge-path {
   stroke-linecap: round;
-}
-
-@media (max-width: 1023px) {
-  .memory-flow .react-flow__controls {
-    left: auto;
-    right: 10px;
-    bottom: auto;
-    top: 10px;
-  }
-}
-
-.story-sheet {
-  padding-bottom: max(1rem, env(safe-area-inset-bottom));
-}
-
-@media (max-width: 1023px) {
-  .story-sheet {
-    bottom: calc(var(--nav-h) + var(--dock-h));
-    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
-  }
 }
 
 @keyframes network-dust {
@@ -253,45 +199,6 @@ summary {
 
 .network-dust {
   animation: network-dust 10s ease-in-out infinite;
-}
-
-@keyframes landing-in {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.landing-fade {
-  animation: landing-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-.landing-delay-1 {
-  animation-delay: 0.16s;
-}
-.landing-delay-2 {
-  animation-delay: 0.32s;
-}
-.landing-delay-3 {
-  animation-delay: 0.48s;
-}
-.landing-delay-4 {
-  animation-delay: 0.64s;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .landing-fade {
-    animation: none;
-  }
-}
-
-@media (max-width: 768px) {
-  .grain::before {
-    display: none;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

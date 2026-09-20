@@ -22,42 +22,38 @@ function MomentNodeInner({ id, data }: NodeProps) {
 
   return (
     <div
-      className={`group relative h-8 w-8 cursor-pointer ${active ? "z-20" : dim ? "z-0 opacity-30" : "z-10"}`}
+      className={`group relative rounded-2xl border px-2.5 py-2 shadow-soft transition duration-300 ${
+        active
+          ? "border-accent bg-[#16161f] shadow-glow scale-[1.04]"
+          : dim
+            ? "border-white/[0.06] bg-[#101016] opacity-25"
+            : "border-white/[0.1] bg-[#14141c] hover:border-white/20"
+      }`}
+      style={{ minWidth: 132, maxWidth: 156 }}
     >
-      <NodeToolbar
-        position={Position.Top}
-        className="!z-50 max-w-[220px] rounded-xl border border-white/10 bg-[#121218]/95 px-3 py-2 text-left shadow-soft backdrop-blur"
-      >
-        <p className="text-xs uppercase tracking-[0.16em]" style={{ color }}>
-          {TYPE_LABEL[d.type]} · moment
+      <NodeToolbar position={Position.Top} className="!z-50 max-w-[220px] rounded-xl border border-white/10 bg-[#121218]/95 px-3 py-2 text-left shadow-soft backdrop-blur">
+        <p className="text-[9px] uppercase tracking-[0.16em]" style={{ color }}>
+          {TYPE_LABEL[d.type]}
         </p>
-        <p className="mt-1 text-sm font-semibold leading-snug text-white">{d.title}</p>
-        {d.preview ? <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-mute">{d.preview}</p> : null}
-        <p className="mt-1 text-xs text-mute">{d.when}</p>
-        <p className="mt-1 text-xs font-semibold text-accent">Click to explore →</p>
+        <p className="mt-1 text-[11px] font-semibold leading-snug text-white">{d.title}</p>
+        {d.preview ? <p className="mt-1 line-clamp-3 text-[10px] leading-relaxed text-mute">{d.preview}</p> : null}
+        <p className="mt-1 text-[9px] uppercase tracking-wider text-mute">{d.when}</p>
       </NodeToolbar>
-      <Handle type="target" position={Position.Left} className="!h-1.5 !w-1.5 !border-0 !bg-accent/70" />
-      <Handle type="source" position={Position.Right} className="!h-1.5 !w-1.5 !border-0 !bg-accent/70" />
-      <span
-        className={`absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 transition duration-200 ${
-          active
-            ? "h-9 w-9 scale-110 shadow-glow ring-2 ring-white/85 ring-offset-2 ring-offset-[#0B0B10]"
-            : "h-6 w-6 hover:scale-125 hover:ring-2 hover:ring-white/50"
-        }`}
-        style={{
-          background: color,
-          borderColor: active ? "#ffffff" : color,
-          boxShadow: active ? `0 0 22px ${color}` : `0 0 10px ${color}66`,
-        }}
-        aria-hidden
-      >
-        {active ? <span className="text-xs drop-shadow">{TYPE_ICON[d.type]}</span> : null}
-      </span>
-      {active && (
-        <p className="pointer-events-none absolute left-11 top-1/2 max-w-[9.5rem] -translate-y-1/2 truncate text-xs font-semibold text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.85)]">
-          {d.title}
-        </p>
-      )}
+      <Handle type="target" position={Position.Left} className="!h-2 !w-2 !border-0 !bg-accent/70" />
+      <Handle type="source" position={Position.Right} className="!h-2 !w-2 !border-0 !bg-accent/70" />
+      <div className="flex items-center gap-2">
+        <span
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm"
+          style={{ background: `${color}22`, color }}
+          aria-hidden
+        >
+          {TYPE_ICON[d.type]}
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-[11px] font-semibold leading-tight">{d.title}</p>
+          <p className="mt-0.5 text-[9px] uppercase tracking-wider text-mute">{d.when}</p>
+        </div>
+      </div>
     </div>
   );
 }

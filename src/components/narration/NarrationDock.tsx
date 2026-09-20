@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Pause, Play, Square, Volume2 } from "lucide-react";
 import { useNarration, type NarrationRate } from "../../hooks/useNarration";
 import { useLifeStore } from "../../store";
-import { buildStoryPath } from "../../domain/graph";
-import { stopNarration, tellSelectedStory } from "../../hooks/storyPlayback";
-import { useIsMobile } from "../../hooks/useIsMobile";
+import { buildMomentNarration, buildPlaceNarration, startNarration, stopNarration } from "../../utils/narration";
+import { buildStoryPath } from "../../utils/networkGraph";
 
 const RATES: NarrationRate[] = [0.8, 1, 1.2];
 
@@ -16,44 +15,28 @@ export default function NarrationDock() {
   const receipts = useLifeStore((s) => s.receipts);
   const edges = useLifeStore((s) => s.edges);
   const storyPlaying = useLifeStore((s) => s.storyPlaying);
-  const compact = useIsMobile(1024);
 
   const path = useMemo(() => {
-    const seed = selectedId ? useLifeStore.getState().receiptById.get(selectedId) : undefined;
+    const seed = receipts.find((r) => r.id === selectedId);
     return seed ? buildStoryPath(seed, receipts, edges, 5) : [];
   }, [receipts, edges, selectedId]);
 
   const canTell = path.length > 0 || Boolean(selectedPlace);
   const active = n.isSpeaking || n.isPaused || storyPlaying;
-  const panelOpen = Boolean(selectedId || selectedPlace);
-
-  useEffect(() => {
-    const show = compact && active;
-    document.documentElement.style.setProperty("--dock-h", show ? "8.25rem" : "0px");
-    return () => document.documentElement.style.setProperty("--dock-h", "0px");
-  }, [compact, active]);
-
   if (!canTell && !active) return null;
-  if (compact && panelOpen && !active) return null;
 
   function tell() {
-    tellSelectedStory({
-      place: selectedPlace && !selectedId ? selectedPlace : null,
-      path,
-    });
+    if (selectedPlace && !selectedId) {
+      startNarration(buildPlaceNarration(selectedPlace, receipts));
+      return;
+    }
+    if (path.length) startNarration(buildMomentNarration(path));
   }
 
   const label = active ? (n.isPaused ? "Paused" : "Telling your story") : "Tell the story";
 
   return (
-    <div
-      className={
-        compact
-          ? "pointer-events-auto fixed inset-x-3 z-50"
-          : "pointer-events-auto fixed bottom-6 left-6 z-50 w-[min(20.5rem,calc(100vw-3rem))]"
-      }
-      style={compact ? { bottom: "calc(var(--nav-h) + 0.45rem)" } : undefined}
-    >
+    <div className="pointer-events-auto fixed bottom-24 left-3 z-50 w-[min(20.5rem,calc(100vw-1.5rem))] md:bottom-6 md:left-6">
       <div className="glass rounded-2xl p-3 shadow-soft">
         <div className="flex items-center gap-3">
           <button
@@ -67,7 +50,7 @@ export default function NarrationDock() {
             🔊
           </button>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">
               {active ? (
                 <span className="inline-flex items-center gap-2">
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
@@ -77,16 +60,16 @@ export default function NarrationDock() {
                 "Tell the story"
               )}
             </p>
-            {active ? <Waveform playing={n.isSpeaking && !n.isPaused} /> : <p className="mt-0.5 truncate text-xs text-mute">Voice from the records on screen</p>}
+            {active ? <Waveform playing={n.isSpeaking && !n.isPaused} /> : <p className="mt-0.5 truncate text-[11px] text-mute">Voice from the records on screen</p>}
           </div>
           <button
             type="button"
             onClick={() => setOpenSettings((v) => !v)}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-mute hover:text-white"
+            className="rounded-full px-2 py-1.5 text-mute hover:text-white"
             aria-expanded={openSettings}
             aria-label="Voice settings"
           >
-            <Volume2 size={16} />
+            <Volume2 size={14} />
           </button>
         </div>
 
@@ -98,30 +81,21 @@ export default function NarrationDock() {
                 style={{ width: n.stepCount ? `${((n.stepIndex + 1) / n.stepCount) * 100}%` : "8%" }}
               />
             </div>
-            {n.currentText ? (
-              <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-mute" aria-live="polite">
-                {n.currentText}
-              </p>
-            ) : null}
-            {n.stepCount > 0 ? (
-              <p className="sr-only" aria-live="polite">
-                Narration step {n.stepIndex + 1} of {n.stepCount}
-              </p>
-            ) : null}
-            <div className="mt-3 flex flex-wrap items-center gap-2">
+            {n.currentText ? <p className="mt-2 line-clamp-2 text-[11px] leading-relaxed text-mute">{n.currentText}</p> : null}
+            <div className="mt-3 flex items-center gap-2">
               {n.isPaused ? (
-                <button type="button" onClick={() => n.resume()} className="inline-flex min-h-11 items-center rounded-full border border-white/10 px-3 text-sm font-semibold text-white transition hover:border-accent/40">
+                <button type="button" onClick={() => n.resume()} className="rounded-full border border-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
                   <Play size={11} className="mr-1 inline" /> Resume
                 </button>
               ) : (
-                <button type="button" onClick={() => n.pause()} className="inline-flex min-h-11 items-center rounded-full border border-white/10 px-3 text-sm font-semibold text-white transition hover:border-accent/40">
+                <button type="button" onClick={() => n.pause()} className="rounded-full border border-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
                   <Pause size={11} className="mr-1 inline" /> Pause
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => stopNarration()}
-                className="inline-flex min-h-11 items-center rounded-full border border-white/10 px-3 text-sm font-semibold text-mute transition hover:text-white"
+                className="rounded-full border border-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-mute"
               >
                 <Square size={10} className="mr-1 inline" /> Stop
               </button>
@@ -133,7 +107,7 @@ export default function NarrationDock() {
           <button
             type="button"
             onClick={tell}
-            className="mt-3 min-h-11 w-full rounded-full bg-accent px-4 text-sm font-semibold text-white transition hover:brightness-110"
+            className="mt-3 hidden w-full rounded-full bg-accent px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-white sm:block"
           >
             Tell the story
           </button>
@@ -142,17 +116,16 @@ export default function NarrationDock() {
         {openSettings && (
           <div className="mt-3 border-t border-white/[0.08] pt-3">
             {!n.supported && (
-              <p className="mb-2 text-xs leading-relaxed text-mute">
+              <p className="mb-2 text-[11px] leading-relaxed text-mute">
                 Voice narration isn't supported in this browser. You can still explore the story visually.
               </p>
             )}
-            <label className="block">
-              <span className="text-xs uppercase tracking-[0.16em] text-mute">Voice</span>
-              <select
-                value={n.voiceURI}
-                onChange={(e) => n.setVoiceURI(e.target.value)}
-                className="mt-1 min-h-11 w-full rounded-xl border border-white/10 bg-[#121218] px-2 py-1.5 text-base outline-none md:text-xs"
-              >
+            <p className="text-[10px] uppercase tracking-[0.16em] text-mute">Voice</p>
+            <select
+              value={n.voiceURI}
+              onChange={(e) => n.setVoiceURI(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-white/10 bg-[#121218] px-2 py-1.5 text-xs outline-none"
+            >
               <option value="">System voice</option>
               {n.voices.map((v) => (
                 <option key={v.voiceURI} value={v.voiceURI}>
@@ -160,23 +133,21 @@ export default function NarrationDock() {
                 </option>
               ))}
             </select>
-            </label>
-            <div className="mt-3 flex gap-1" role="group" aria-label="Narration speed">
+            <div className="mt-3 flex gap-1">
               {RATES.map((r) => (
                 <button
                   key={r}
                   type="button"
-                  aria-pressed={n.rate === r}
                   onClick={() => n.setRate(r)}
-                  className={`min-h-11 flex-1 rounded-full border text-sm font-semibold ${
-                    n.rate === r ? "border-accent bg-accent/20 text-white" : "border-white/10 text-mute hover:text-white"
+                  className={`flex-1 rounded-full border py-1 text-[10px] font-semibold ${
+                    n.rate === r ? "border-accent text-white" : "border-white/10 text-mute"
                   }`}
                 >
                   {r}x
                 </button>
               ))}
             </div>
-            <label className="mt-3 flex min-h-11 items-center gap-2 text-xs uppercase tracking-[0.14em] text-mute">
+            <label className="mt-3 flex items-center gap-2 text-[10px] uppercase tracking-[0.14em] text-mute">
               Volume {Math.round(n.volume * 100)}%
               <input
                 type="range"
@@ -184,13 +155,13 @@ export default function NarrationDock() {
                 max={100}
                 value={Math.round(n.volume * 100)}
                 onChange={(e) => n.setVolume(Number(e.target.value) / 100)}
-                className="h-11 flex-1 accent-[#7C6BFF]"
+                className="flex-1 accent-[#7C6BFF]"
               />
             </label>
             <button
               type="button"
               onClick={() => n.setEnabled(!n.enabled)}
-              className="mt-3 min-h-11 text-sm font-semibold text-accent"
+              className="mt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent"
             >
               {n.enabled ? "Disable narration" : "Enable narration"}
             </button>

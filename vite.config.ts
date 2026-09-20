@@ -25,9 +25,4 @@ export default defineConfig({
   worker: {
     format: "es",
   },
-  build: {
-    target: "es2022",
-    modulePreload: { polyfill: false },
-    cssCodeSplit: true,
-  },
 });

@@ -1,7 +1,7 @@
-import { useDeferredValue, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { neighborIds, useLifeStore } from "../store";
-import { searchReceipts } from "../domain/search";
+import { searchReceipts } from "../utils/analyzeData";
 import { SUGGESTED_SEARCHES, TYPE_LABEL } from "../utils/constants";
 import MomentCard from "../components/MomentCard";
 import { EmptyState, PageIntro } from "../components/ui";
@@ -9,16 +9,13 @@ import { EmptyState, PageIntro } from "../components/ui";
 export default function SearchPage() {
   const navigate = useNavigate();
   const receipts = useLifeStore((s) => s.receipts);
+  const edges = useLifeStore((s) => s.edges);
   const query = useLifeStore((s) => s.query);
   const setQuery = useLifeStore((s) => s.setQuery);
   const applyTrace = useLifeStore((s) => s.applyTrace);
   const [active, setActive] = useState(0);
-  const deferredQuery = useDeferredValue(query);
 
-  const results = useMemo(
-    () => (deferredQuery.trim() ? searchReceipts(deferredQuery, receipts, 40) : []),
-    [deferredQuery, receipts],
-  );
+  const results = useMemo(() => (query.trim() ? searchReceipts(query, receipts, 40) : []), [query, receipts]);
   const grouped = useMemo(() => {
     const m = new Map<string, typeof results>();
     for (const r of results) {
@@ -30,12 +27,12 @@ export default function SearchPage() {
   }, [results]);
 
   function openResult(id: string) {
-    applyTrace([id, ...neighborIds(id)]);
+    applyTrace([id, ...neighborIds(id, edges)]);
     navigate("/network");
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-3 py-8 sm:px-4 sm:py-10 md:px-8">
+    <div className="mx-auto max-w-4xl px-4 py-10 md:px-8">
       <PageIntro kicker="Curiosity" title="What are you curious about?" />
       <input
         value={query}
@@ -44,9 +41,10 @@ export default function SearchPage() {
           setActive(0);
         }}
         onKeyDown={(e) => {
-          if (e.key === "Escape" && query) {
+          if (e.key === "Escape") {
             e.preventDefault();
             setQuery("");
+            setActive(0);
             return;
           }
           if (!results.length) return;
@@ -63,8 +61,7 @@ export default function SearchPage() {
           }
         }}
         placeholder="Search your life…"
-        enterKeyHint="search"
-        className="mt-7 min-h-12 w-full rounded-2xl border border-white/[0.08] bg-[#121218] px-4 py-3 text-base outline-none transition focus:border-accent/50 focus:shadow-[0_0_0_4px_rgba(124,107,255,0.12)] sm:px-5 sm:py-4 sm:text-lg"
+        className="mt-7 w-full rounded-2xl border border-white/[0.08] bg-[#121218] px-5 py-4 text-lg outline-none transition focus:border-accent/50 focus:shadow-[0_0_0_4px_rgba(124,107,255,0.12)]"
         aria-label="Search your life"
         aria-controls="search-results"
         aria-activedescendant={results[active] ? `result-${results[active].id}` : undefined}
@@ -78,7 +75,7 @@ export default function SearchPage() {
             key={s}
             type="button"
             onClick={() => setQuery(s)}
-            className="min-h-11 rounded-full border border-white/[0.08] px-4 text-sm text-mute transition hover:border-accent/40 hover:text-white"
+            className="rounded-full border border-white/[0.08] px-3 py-1.5 text-xs text-mute transition hover:border-accent/40 hover:text-white"
           >
             {s}
           </button>
@@ -90,32 +87,9 @@ export default function SearchPage() {
           : `The archive holds ${receipts.length.toLocaleString("en-IN")} official records. Search to browse them.`}
       </p>
       {!query.trim() ? (
-        <EmptyState
-          title="Ask the dataset something"
-          body="Type a place, a song, or a time of day — or tap a suggestion above. Results come from the official archives."
-          action={
-            <Link
-              to="/network"
-              className="inline-flex min-h-11 items-center rounded-full bg-accent px-5 text-sm font-semibold text-white transition hover:brightness-110"
-            >
-              Open the memory network →
-            </Link>
-          }
-        />
+        <EmptyState title="Ask the dataset something" body="Results are filtered from the official household, Spotify, and India archives — not from invented receipts." />
       ) : grouped.length === 0 ? (
-        <EmptyState
-          title="Nothing matched"
-          body="Try a place, a song, a time of day — or one of the suggested questions."
-          action={
-            <button
-              type="button"
-              onClick={() => setQuery("")}
-              className="min-h-11 rounded-full border border-white/20 px-5 text-sm font-semibold text-white transition hover:border-accent/50"
-            >
-              Clear search
-            </button>
-          }
-        />
+        <EmptyState title="Nothing matched" body="Try a place, a song, a time of day — or one of the suggested questions." />
       ) : (
         <div id="search-results" className="mt-6 space-y-8" role="listbox" aria-label="Search results">
           {grouped.map(([type, items]) => (
@@ -129,7 +103,7 @@ export default function SearchPage() {
                     <MomentCard
                       receipt={r}
                       onOpen={() => openResult(r.id)}
-                      connections={neighborIds(r.id).length}
+                      connections={neighborIds(r.id, edges).length}
                     />
                   </div>
                 ))}

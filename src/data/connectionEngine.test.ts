@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { detectConnections, buildEdgeIndex, otherId } from "./connectionEngine";
-import type { Receipt } from "./types";
+import { buildEdgeIndex, detectConnections, getConnectionReason, otherId } from "./connectionEngine";
+import type { ConnectionEdge, Receipt } from "./types";
 
 function rec(partial: Partial<Receipt> & Pick<Receipt, "id" | "timestamp" | "type">): Receipt {
   return {
@@ -51,14 +51,19 @@ describe("detectConnections", () => {
 });
 
 describe("buildEdgeIndex", () => {
-  it("returns neighbors without scanning the full list twice", () => {
-    const edges = detectConnections([
-      rec({ id: "a", type: "music", timestamp: "2020-01-01T23:48:00", title: "Song" }),
-      rec({ id: "b", type: "place", timestamp: "2020-01-01T23:56:00", title: "Beach", location: "Marina" }),
-    ]);
+  const edges: ConnectionEdge[] = [
+    { a: "a", b: "b", reason: "temporal", detail: "Connected because these two moments occurred 8 minutes apart.", weight: 3 },
+    { a: "b", b: "c", reason: "same-day", detail: "Connected because these two moments occurred on the same day.", weight: 2 },
+  ];
+
+  it("indexes both endpoints so neighbor lookup is O(degree)", () => {
     const index = buildEdgeIndex(edges);
-    const fromA = index.get("a") ?? [];
-    expect(fromA.length).toBeGreaterThan(0);
-    expect(fromA.some((e) => otherId(e, "a") === "b")).toBe(true);
+    expect(index.get("a")?.map((e) => otherId(e, "a"))).toEqual(["b"]);
+    expect(index.get("b")?.map((e) => otherId(e, "b")).sort()).toEqual(["a", "c"]);
+    expect(index.get("missing")).toBeUndefined();
+  });
+
+  it("preserves the human-readable reason on every edge", () => {
+    expect(getConnectionReason(edges[0])).toMatch(/minutes apart/);
   });
 });

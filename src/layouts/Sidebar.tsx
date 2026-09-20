@@ -11,8 +11,8 @@ const LINKS = [
 
 export default function Sidebar() {
   return (
-    <aside className="hidden h-svh w-52 shrink-0 flex-col border-r border-white/[0.08] bg-[#0D0D12]/90 px-3 py-6 backdrop-blur-xl md:flex lg:w-56 lg:px-4">
-      <Link to="/" className="px-2 text-xs font-semibold uppercase tracking-[0.22em] text-mute transition hover:text-white">
+    <aside className="hidden h-svh w-56 shrink-0 flex-col border-r border-white/[0.08] bg-[#0D0D12]/90 px-4 py-6 backdrop-blur-xl md:flex">
+      <Link to="/" className="px-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-mute transition hover:text-white">
         Life // Receipts
       </Link>
       <nav className="mt-8 flex flex-1 flex-col gap-1" aria-label="Primary">
@@ -21,9 +21,9 @@ export default function Sidebar() {
             key={label}
             to={to}
             className={({ isActive }) =>
-              `flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
+              `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
                 isActive
-                  ? "bg-accent/20 text-white shadow-[inset_0_0_0_1px_rgba(124,107,255,0.55)]"
+                  ? "bg-white/[0.07] text-white shadow-[inset_0_0_0_1px_rgba(124,107,255,0.35)]"
                   : "text-mute hover:bg-white/[0.04] hover:text-white"
               }`
             }
@@ -42,24 +42,29 @@ export default function Sidebar() {
 }
 
 export function BottomNav() {
+  const mobile = [
+    { to: "/overview", label: "Home", icon: Home },
+    { to: "/journey", label: "Journey", icon: Activity },
+    { to: "/network", label: "Network", icon: GitBranch },
+    { to: "/discoveries", label: "Discover", icon: Sparkles },
+  ];
   return (
     <nav
-      aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-white/[0.08] bg-[#0D0D12]/95 px-1 pt-1 backdrop-blur-xl md:hidden"
-      style={{ paddingBottom: "max(0.35rem, env(safe-area-inset-bottom))" }}
+      aria-label="Mobile"
+      className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-white/[0.08] bg-[#0D0D12]/95 px-2 py-2 backdrop-blur-xl md:hidden"
     >
-      {LINKS.map(({ to, label, icon: Icon }) => (
+      {mobile.map(({ to, label, icon: Icon }) => (
         <NavLink
           key={label}
           to={to}
           className={({ isActive }) =>
-            `flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-semibold ${
-              isActive ? "bg-white/[0.08] text-white" : "text-mute hover:text-white"
+            `flex flex-col items-center gap-1 rounded-xl py-1.5 text-[10px] uppercase tracking-wider ${
+              isActive ? "text-white" : "text-mute"
             }`
           }
         >
           <Icon size={18} />
-          <span className="max-w-full truncate">{label === "Discoveries" ? "Discover" : label}</span>
+          {label}
         </NavLink>
       ))}
     </nav>

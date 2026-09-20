@@ -1,31 +1,25 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 import { useLifeStore } from "../../store";
 import { TYPE_COLOR, TYPE_ICON, TYPE_LABEL } from "../../utils/constants";
 import { formatWhen } from "../../utils/format";
 import { otherId } from "../../data/connectionEngine";
-import { buildStoryPath } from "../../domain/graph";
-import { explainSelection, pathSpanMinutes } from "../../domain/story";
-import { stopNarration, tellSelectedStory } from "../../hooks/storyPlayback";
+import { buildStoryPath } from "../../utils/networkGraph";
+import { buildMomentNarration, buildPlaceNarration, startNarration, stopNarration } from "../../utils/narration";
 import type { ConnectionEdge, Receipt, ReceiptType } from "../../data/types";
-import { useFocusTrap } from "../../hooks/useFocusTrap";
-import { useIsMobile } from "../../hooks/useIsMobile";
-import { usePrefersReducedMotion } from "../../hooks/usePrefersReducedMotion";
 
-const EMPTY_EDGES: ConnectionEdge[] = [];
+const NO_LINKS: ConnectionEdge[] = [];
 
 export default function StoryPanel() {
   const navigate = useNavigate();
+  const selectedId = useLifeStore((s) => s.selectedId);
   const selectedEdge = useLifeStore((s) => s.selectedEdge);
   const selectedPlace = useLifeStore((s) => s.selectedPlace);
-  const selected = useLifeStore((s) => (s.selectedId ? (s.receiptById.get(s.selectedId) ?? null) : null));
-  const links = useLifeStore((s) => {
-    if (!s.selectedId) return EMPTY_EDGES;
-    return s.edgesByNode.get(s.selectedId) ?? EMPTY_EDGES;
-  });
-  const locationStats = useLifeStore((s) => s.locationStats);
+  const receipts = useLifeStore((s) => s.receipts);
+  const edges = useLifeStore((s) => s.edges);
+  const links = useLifeStore((s) => (s.selectedId ? (s.edgesByNode.get(s.selectedId) ?? NO_LINKS) : NO_LINKS));
   const select = useLifeStore((s) => s.select);
   const selectEdge = useLifeStore((s) => s.selectEdge);
   const selectPlace = useLifeStore((s) => s.selectPlace);
@@ -33,61 +27,81 @@ export default function StoryPanel() {
   const storyPlaying = useLifeStore((s) => s.storyPlaying);
   const setStoryPlaying = useLifeStore((s) => s.setStoryPlaying);
   const setToast = useLifeStore((s) => s.setToast);
+  const selected = receipts.find((r) => r.id === selectedId);
   const cancel = useRef(false);
-  const sheet = useIsMobile(1024);
-  const reduced = usePrefersReducedMotion();
 
-  const dismiss = useCallback(() => {
-    cancel.current = true;
-    stopNarration();
-    select(null);
-    selectEdge(null);
-    selectPlace(null);
-    setStoryPlaying(false);
-  }, [select, selectEdge, selectPlace, setStoryPlaying]);
-
-  const path = useMemo(() => {
-    if (!selected) return [];
-    const { receipts, edges } = useLifeStore.getState();
-    return buildStoryPath(selected, receipts, edges, 5);
-  }, [selected]);
+  const path = useMemo(
+    () => (selected ? buildStoryPath(selected, receipts, edges, 5) : []),
+    [selected, receipts, edges],
+  );
 
   const placeMix = useMemo(() => {
     if (!selectedPlace) return null;
-    const hit = locationStats.find((l) => l.location === selectedPlace);
-    return hit ? { count: hit.count, byType: hit.byType } : null;
-  }, [selectedPlace, locationStats]);
+    let count = 0;
+    const byType: Partial<Record<ReceiptType, number>> = {};
+    for (const r of receipts) {
+      if (r.location !== selectedPlace) continue;
+      count += 1;
+      byType[r.type] = (byType[r.type] ?? 0) + 1;
+    }
+    return { count, byType };
+  }, [selectedPlace, receipts]);
 
-  const locCount = selected?.location
-    ? (locationStats.find((l) => l.location === selected.location)?.count ?? 0)
-    : 0;
+  const locCount = useMemo(() => {
+    if (!selected?.location) return 0;
+    let n = 0;
+    for (const r of receipts) if (r.location === selected.location) n += 1;
+    return n;
+  }, [selected?.location, receipts]);
 
-  const spanMin = useMemo(() => pathSpanMinutes(path), [path]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        cancel.current = true;
+        stopNarration();
+        select(null);
+        selectEdge(null);
+        selectPlace(null);
+        setStoryPlaying(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [select, selectEdge, selectPlace, setStoryPlaying]);
 
-  const why = useMemo(
-    () =>
-      explainSelection({
-        edgeDetail: selectedEdge?.detail,
-        placeCount: selectedPlace && placeMix ? placeMix.count : null,
-        hasReceipt: Boolean(selected),
-        pathLength: path.length,
-        spanMin,
-        locationCount: locCount,
-        linkCount: links.length,
-      }),
-    [selectedEdge, selectedPlace, placeMix, selected, path.length, spanMin, locCount, links.length],
-  );
+  const spanMin = useMemo(() => {
+    if (path.length < 2) return 0;
+    const t = path.map((r) => new Date(r.timestamp).getTime()).sort((a, b) => a - b);
+    return Math.round((t[t.length - 1] - t[0]) / 60000);
+  }, [path]);
+
+  const why = useMemo(() => {
+    if (selectedEdge) return selectedEdge.detail;
+    if (selectedPlace && placeMix) {
+      return `This location appears in ${placeMix.count.toLocaleString("en-IN")} official records.`;
+    }
+    if (!selected) return "";
+    if (path.length > 1 && spanMin > 0 && spanMin < 24 * 60) {
+      return `${path.length} receipts sit ${spanMin} minutes apart in the archive.`;
+    }
+    if (selected.location && locCount > 1) {
+      return `This location appears in ${locCount.toLocaleString("en-IN")} different moments.`;
+    }
+    if (links.length > 0) {
+      return `${links.length} stored relationship${links.length === 1 ? "" : "s"} connect this receipt to others.`;
+    }
+    return "This is an official record. No stored relationship was found among the capped connections.";
+  }, [selectedEdge, selectedPlace, placeMix, selected, path.length, spanMin, locCount, links.length]);
 
   async function followStory() {
     if (!path.length) return;
     cancel.current = false;
     stopNarration();
     setStoryPlaying(true);
-    const wait = reduced ? 0 : 1400;
     for (const step of path) {
       if (cancel.current) break;
       select(step.id);
-      if (wait) await new Promise((r) => setTimeout(r, wait));
+      await new Promise((r) => setTimeout(r, 1400));
     }
     setStoryPlaying(false);
     if (!cancel.current) {
@@ -98,65 +112,45 @@ export default function StoryPanel() {
 
   const open = Boolean(selected || selectedEdge || selectedPlace);
   const panelRef = useRef<HTMLElement>(null);
-  useFocusTrap(panelRef, open, dismiss);
+
+  useEffect(() => {
+    if (!open) return;
+    const root = panelRef.current;
+    const focusable = root?.querySelector<HTMLElement>("button, [href], input, select, textarea");
+    focusable?.focus();
+  }, [open, selectedId]);
 
   return (
     <AnimatePresence>
       {open && (
-        <>
-          {sheet && (
-            <motion.button
-              type="button"
-              aria-label="Dismiss story"
-              className="fixed inset-0 z-[45] bg-black/55 lg:hidden"
-              initial={reduced ? { opacity: 0 } : { opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: reduced ? 0 : 0.2 }}
-              onClick={dismiss}
-            />
-          )}
-          <motion.aside
-            ref={panelRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="story-title"
-            initial={reduced ? { opacity: 0 } : sheet ? { y: 48, opacity: 0 } : { x: 28, opacity: 0 }}
-            animate={reduced ? { opacity: 1 } : sheet ? { y: 0, opacity: 1 } : { x: 0, opacity: 1 }}
-            exit={reduced ? { opacity: 0 } : sheet ? { y: 32, opacity: 0 } : { x: 20, opacity: 0 }}
-            transition={{ duration: reduced ? 0.12 : 0.28, ease: [0.22, 1, 0.36, 1] }}
-            className={
-              sheet
-                ? "story-sheet glass pointer-events-auto fixed inset-x-0 z-50 max-h-[min(58dvh,32rem)] overflow-y-auto rounded-t-3xl px-4 pb-5 pt-2"
-                : "glass pointer-events-auto fixed bottom-6 right-6 z-50 w-[min(23rem,calc(100vw-3rem))] max-h-[min(78vh,640px)] overflow-y-auto rounded-2xl p-5"
-            }
-          >
-          {sheet && <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-white/30" aria-hidden />}
+        <motion.aside
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="story-title"
+          initial={{ x: 28, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: 20, opacity: 0 }}
+          className="glass pointer-events-auto fixed bottom-20 right-3 z-50 w-[min(23rem,calc(100vw-1.5rem))] max-h-[min(78vh,640px)] overflow-y-auto rounded-2xl p-5 md:bottom-6 md:right-6"
+        >
           <div className="flex items-start justify-between gap-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-accent">
               {selectedPlace && !selected ? "Map the story" : "One connected moment"}
             </p>
             <button
               type="button"
               aria-label="Close"
-              onClick={dismiss}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-mute hover:text-white"
+              onClick={() => {
+                cancel.current = true;
+                select(null);
+                selectEdge(null);
+                selectPlace(null);
+              }}
+              className="text-mute hover:text-white"
             >
               <X size={16} />
             </button>
           </div>
-
-          {selectedPlace && !selected && !placeMix && (
-            <h2 id="story-title" className="mt-3 text-xl font-bold leading-tight">
-              {selectedPlace}
-            </h2>
-          )}
-
-          {!selected && !selectedPlace && (
-            <h2 id="story-title" className="mt-3 text-xl font-bold leading-tight">
-              {selectedEdge ? "Why these moments connect" : "Story"}
-            </h2>
-          )}
 
           {selectedPlace && !selected && placeMix && (
             <>
@@ -184,7 +178,7 @@ export default function StoryPanel() {
               <p className="mt-3 text-2xl" aria-hidden>
                 {TYPE_ICON[selected.type]}
               </p>
-              <p className="text-xs uppercase tracking-[0.16em]" style={{ color: TYPE_COLOR[selected.type] }}>
+              <p className="text-[10px] uppercase tracking-[0.16em]" style={{ color: TYPE_COLOR[selected.type] }}>
                 {TYPE_LABEL[selected.type]}
               </p>
               <h2 id="story-title" className="mt-1 text-xl font-bold leading-tight">
@@ -200,7 +194,7 @@ export default function StoryPanel() {
 
           {why && (
             <div className="mt-4 rounded-xl border border-accent/30 bg-accent/10 p-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">
                 {selectedEdge ? "Why are these connected?" : "Why this matters"}
               </p>
               <p className="mt-2 text-sm text-white">{why}</p>
@@ -209,7 +203,7 @@ export default function StoryPanel() {
 
           {path.length > 1 && (
             <div className="mt-4">
-              <p className="text-xs uppercase tracking-[0.16em] text-mute">Connected to</p>
+              <p className="text-[10px] uppercase tracking-[0.16em] text-mute">Connected to</p>
               <ol className="mt-2 space-y-2">
                 {path
                   .filter((r) => r.id !== selected?.id)
@@ -220,10 +214,10 @@ export default function StoryPanel() {
                         <button
                           type="button"
                           onClick={() => select(r.id)}
-                          className="min-h-11 w-full rounded-xl border border-white/[0.08] px-3 py-2 text-left text-sm transition hover:border-accent/40 hover:bg-white/[0.05]"
+                          className="w-full rounded-xl border border-white/[0.08] px-3 py-2 text-left text-sm hover:border-accent/40"
                         >
                           {TYPE_ICON[r.type]} {r.title}
-                          {edge ? <span className="mt-0.5 block text-xs text-mute">{edge.detail}</span> : null}
+                          {edge ? <span className="mt-0.5 block text-[11px] text-mute">{edge.detail}</span> : null}
                         </button>
                       </li>
                     );
@@ -243,7 +237,7 @@ export default function StoryPanel() {
               <button
                 type="button"
                 onClick={() => explorePlace(selectedPlace)}
-                className="min-h-11 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
+                className="rounded-full bg-accent px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white"
               >
                 Explore these moments →
               </button>
@@ -251,13 +245,14 @@ export default function StoryPanel() {
             <button
               type="button"
               disabled={!selected && !selectedPlace}
-              onClick={() =>
-                tellSelectedStory({
-                  place: selectedPlace && !selected ? selectedPlace : null,
-                  path,
-                })
-              }
-              className="min-h-11 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
+              onClick={() => {
+                if (selectedPlace && !selected) {
+                  startNarration(buildPlaceNarration(selectedPlace, receipts));
+                  return;
+                }
+                if (path.length) startNarration(buildMomentNarration(path));
+              }}
+              className="rounded-full bg-accent px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white disabled:opacity-40"
             >
               🔊 {storyPlaying ? "Telling your story" : "Tell the story"}
             </button>
@@ -265,7 +260,7 @@ export default function StoryPanel() {
               type="button"
               disabled={storyPlaying || path.length < 2}
               onClick={() => void followStory()}
-              className="min-h-11 rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-white/85 transition hover:border-accent/50 hover:text-white disabled:opacity-40"
+              className="rounded-full border border-white/[0.12] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-mute disabled:opacity-40"
             >
               {storyPlaying ? "Following…" : "Follow the story →"}
             </button>
@@ -273,14 +268,13 @@ export default function StoryPanel() {
               <button
                 type="button"
                 onClick={() => navigate(`/moment/${selected.id}`)}
-                className="min-h-11 rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-white/85 transition hover:border-white/40 hover:text-white"
+                className="rounded-full border border-white/[0.12] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-mute"
               >
                 Open sequence
               </button>
             )}
           </div>
         </motion.aside>
-        </>
       )}
     </AnimatePresence>
   );
@@ -289,7 +283,7 @@ export default function StoryPanel() {
 function StorySpine({ path }: { path: Receipt[] }) {
   return (
     <div className="mt-4 rounded-xl border border-white/[0.08] px-3 py-3">
-      <p className="text-xs uppercase tracking-[0.16em] text-mute">The thread</p>
+      <p className="text-[10px] uppercase tracking-[0.16em] text-mute">The thread</p>
       <ol className="mt-2 space-y-1">
         {path.map((r, i) => (
           <li key={r.id} className="flex items-start gap-2 text-sm">

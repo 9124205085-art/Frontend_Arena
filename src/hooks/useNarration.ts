@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { estimateSpeechMs } from "../domain/narration";
 
 export type NarrationRate = 0.8 | 1 | 1.2;
 
@@ -48,6 +47,11 @@ function loadSettings(): Settings {
   } catch {
     return { enabled: true, rate: 1, volume: 0.8, voiceURI: "" };
   }
+}
+
+function estimateMs(text: string, rate: number): number {
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(1600, Math.round((words / 2.35) * 1000) / rate + 350);
 }
 
 function pickVoice(voices: SpeechSynthesisVoice[], uri: string): SpeechSynthesisVoice | null {
@@ -192,7 +196,7 @@ class NarrationEngine {
 
   speak(text: string): Promise<void> {
     return new Promise((resolve) => {
-      this.speakSequence([{ text, duration: estimateSpeechMs(text, this.rate) }], {
+      this.speakSequence([{ text, duration: estimateMs(text, this.rate) }], {
         onDone: () => resolve(),
       });
     });
@@ -202,7 +206,7 @@ class NarrationEngine {
     this.stopInternal(false);
     this.stopped = false;
     this.queue = steps
-      .map((s) => ({ text: s.text.trim(), duration: s.duration ?? estimateSpeechMs(s.text, this.rate) }))
+      .map((s) => ({ text: s.text.trim(), duration: s.duration ?? estimateMs(s.text, this.rate) }))
       .filter((s) => s.text.length > 0);
     this.onStep = opts.onStep;
     this.onDone = opts.onDone;
@@ -339,7 +343,7 @@ export function getNarrationEngine() {
 }
 
 export function estimateNarrationDuration(text: string, rate = 1) {
-  return estimateSpeechMs(text, rate);
+  return estimateMs(text, rate);
 }
 
 export function useNarration() {

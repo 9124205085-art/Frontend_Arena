@@ -4,29 +4,26 @@
  */
 
 import { OFFICIAL_SOURCES } from "./sources";
+import { buildArchiveBundle, receiptsFromCsvTexts } from "./archiveBundle";
 import type { Chapter, ConnectionEdge, Receipt, ReceiptType } from "./types";
-import type { Pattern } from "../domain/insights";
+import type { Pattern } from "../utils/analyzeData";
+import { getLocationStats } from "../utils/analyzeData";
 
 export type ArchiveBundle = {
   receipts: Receipt[];
   edges: ConnectionEdge[];
   chapters: Chapter[];
   presentTypes: ReceiptType[];
-  overview: ReturnType<typeof import("../domain/insights").getOverview>;
+  overview: ReturnType<typeof import("../utils/analyzeData").getOverview>;
   patterns: Pattern[];
   years: number[];
-  locationStats: ReturnType<typeof import("../domain/insights").getLocationStats>;
+  locationStats: ReturnType<typeof getLocationStats>;
 };
 
 async function fetchText(url: string, label: string): Promise<string> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Could not read official ${label} file (${res.status})`);
   return res.text();
-}
-
-async function parseOnMainThread(household: string, spotify: string, india: string): Promise<ArchiveBundle> {
-  const { buildArchiveBundle } = await import("./archiveBundle");
-  return buildArchiveBundle(household, spotify, india);
 }
 
 /**
@@ -62,9 +59,18 @@ export async function loadOfficialArchive(): Promise<ArchiveBundle> {
         worker.postMessage({ household, spotify, india });
       });
     } catch {
-      return parseOnMainThread(household, spotify, india);
+      return buildArchiveBundle(household, spotify, india);
     }
   }
 
-  return parseOnMainThread(household, spotify, india);
+  return buildArchiveBundle(household, spotify, india);
+}
+
+export async function loadOfficialReceipts(): Promise<Receipt[]> {
+  const [household, spotify, india] = await Promise.all([
+    fetchText(OFFICIAL_SOURCES.household.url, "household"),
+    fetchText(OFFICIAL_SOURCES.spotify.url, "spotify"),
+    fetchText(OFFICIAL_SOURCES.india.url, "india transactions"),
+  ]);
+  return receiptsFromCsvTexts(household, spotify, india);
 }

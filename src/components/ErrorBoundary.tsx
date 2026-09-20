@@ -23,19 +23,19 @@ export default class ErrorBoundary extends Component<Props, State> {
   render() {
     if (!this.state.err) return this.props.children;
     return (
-      <div className="flex min-h-[40vh] flex-col items-center justify-center px-6 text-center" role="alert">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">Something went wrong</p>
+      <div className="flex min-h-[40vh] flex-col items-center justify-center px-6 text-center">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-accent">Something went wrong</p>
         <h2 className="mt-3 text-2xl font-bold">{this.props.fallbackTitle ?? "This view could not be shown."}</h2>
-        <p className="mt-2 max-w-md text-base text-mute">{this.state.err}</p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
+        <p className="mt-2 max-w-md text-sm text-mute">{this.state.err}</p>
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             type="button"
             onClick={() => this.setState({ err: null })}
-            className="min-h-12 rounded-full bg-accent px-6 text-sm font-semibold text-white transition hover:brightness-110"
+            className="rounded-full bg-accent px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white"
           >
             Try again
           </button>
-          <a href="/" className="inline-flex min-h-12 items-center rounded-full border border-white/15 px-6 text-sm font-semibold text-white/80 transition hover:border-white/40 hover:text-white">
+          <a href="/" className="rounded-full border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-mute">
             Return to landing
           </a>
         </div>

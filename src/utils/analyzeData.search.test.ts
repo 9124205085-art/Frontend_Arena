@@ -43,4 +43,21 @@ describe("searchReceipts", () => {
   it("finds a category/type", () => {
     expect(searchReceipts("music", sample).some((r) => r.id === "1")).toBe(true);
   });
+
+  it("finds extra.artist when it is not in the title", () => {
+    const rows: Receipt[] = [
+      {
+        id: "3",
+        type: "music",
+        timestamp: "2021-02-02T08:00:00",
+        title: "Untitled Track",
+        description: "",
+        tags: [],
+        relatedIds: [],
+        source: "spotify",
+        extra: { artist: "A.R. Rahman" },
+      },
+    ];
+    expect(searchReceipts("rahman", rows).map((r) => r.id)).toEqual(["3"]);
+  });
 });

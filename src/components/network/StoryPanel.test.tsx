@@ -23,7 +23,6 @@ describe("StoryPanel", () => {
       selectedEdge: null,
       selectedPlace: null,
       receipts: [receipt],
-      receiptById: new Map([["m1", receipt]]),
       edgesByNode: new Map(),
       edges: [],
       locationStats: [],
@@ -39,7 +38,7 @@ describe("StoryPanel", () => {
     );
     expect(screen.getByRole("dialog", { name: /midnight city/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Close" })).toHaveAccessibleName("Close");
-    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.keyDown(window, { key: "Escape" });
     expect(useLifeStore.getState().selectedId).toBeNull();
     expect(useLifeStore.getState().selectedPlace).toBeNull();
     expect(useLifeStore.getState().selectedEdge).toBeNull();

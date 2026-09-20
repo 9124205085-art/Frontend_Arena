@@ -35,7 +35,7 @@ describe("Search keyboard", () => {
     useLifeStore.setState({
       receipts,
       query: "",
-      receiptById: new Map(receipts.map((r) => [r.id, r])),
+      edges: [],
       edgesByNode: new Map(),
     });
   });

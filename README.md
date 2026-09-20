@@ -42,8 +42,8 @@ Implemented in the current codebase:
 - **Relationship discovery** — stored `detail` on every edge; “Why are these connected?” when a line is selected.
 - **Follow the story** — silent camera walk along the connected path.
 - **Tell the story** — optional voice narration that highlights the same path. Never autoplays.
-- **Search** — header `/` shortcut; `/search` matches title, description, tags, location, type, timestamp, and selected extra fields. Arrow keys + Enter on results.
-- **Filtering** — category chips (only types present in the loaded archive), year and month selects inside **Refine this view**, night/evening lenses from discoveries.
+- **Search** — header `/` shortcut; `/search` matches title, description, tags , location, type, timestamp, and selected extra fields. Arrow keys + Enter on results.
+- **Filtering** — category chips (only types present in the loaded archive), year rail, month rail, night/evening lenses from discoveries.
 - **Journey** — `/journey` opens the network in time-layout mode.
 - **Insights / discoveries** — pattern cards with Trace / Explain this; derived at load from the archive.
 - **Chapters** — three chapters, one per official source (Spotify / household / India), shown on Discoveries.
@@ -66,14 +66,14 @@ Relationship detection (capped, reason on every edge)
     ↓
 Insight + chapter generation (counted, not invented)
     ↓
-Zustand store (receipts, edges, cached overview/patterns)
+Zustand LifeStore (receipts, edges, edgesByNode, cached overview/patterns)
     ↓
 Interactive Memory Network (sampled connected subgraph)
     ↓
 Story panel → Follow the story / Tell the story
 ```
 
-Load path: `lifeStore.load` → `loadOfficialArchive` → worker `buildArchiveBundle` (or main-thread fallback) → UI.
+Load path: `store.load` → `loadOfficialArchive` → worker `buildArchiveBundle` (or main-thread fallback) → UI.
 
 ---
 
@@ -122,39 +122,35 @@ The type union also lists `same-week` and `explicit-mention`; **those reasons ar
 
 ## 7. Architecture
 
-Layers stay one-way: **pages → components/hooks → domain/lib → data**. UI does not run dataset analysis inside JSX. Domain modules do not import the store or React.
-
 ```mermaid
 flowchart TD
     CSV[Official CSV archives]
     Fetch[Vite asset URLs + fetch]
     Worker[archive.worker / main-thread fallback]
-    Data[data: csv + normalize + detectConnections + chapters]
-    Domain[domain: insights / search / graph / narration copy / story]
-    Store[state/lifeStore]
-    UI[pages + network UI]
-    Voice[hooks/storyPlayback + Web Speech]
+    Norm[csv parse + normalize + validate]
+    Rel[detectConnections]
+    Ch[detectChapters]
+    Ins[getOverview / getPatterns]
+    Store[Zustand LifeStore]
+    Net[Memory Network - React Flow]
+    Panel[Story panel]
+    Voice[Web Speech narration]
+    Search[Search + filters]
+    Land[Landing MemoryUniverse / fallback]
 
-    CSV --> Fetch --> Worker --> Data
-    Data --> Domain
-    Domain --> Store
-    Store --> UI
-    UI --> Voice
+    CSV --> Fetch --> Worker --> Norm
+    Norm --> Rel
+    Norm --> Ch
+    Norm --> Ins
+    Rel --> Store
+    Ch --> Store
+    Ins --> Store
+    Store --> Net
+    Store --> Search
+    Store --> Land
+    Net --> Panel
+    Panel --> Voice
 ```
-
-| Concern | Module |
-| --- | --- |
-| Data normalization | `src/data/normalize.ts` |
-| Relationship calculation | `src/data/connectionEngine.ts` (re-exported from `src/domain/relationships.ts`) |
-| Insight generation | `src/domain/insights.ts` |
-| Search | `src/domain/search.ts` |
-| Graph sample + layout | `src/domain/graph.ts` + `src/hooks/useGraphModel.ts` |
-| Narration copy | `src/domain/narration.ts` |
-| Narration playback | `src/hooks/storyPlayback.ts` + `src/hooks/useNarration.ts` |
-| Story copy / sequences | `src/domain/story.ts` |
-| App state | `src/state/lifeStore.ts` (`src/store.ts` re-exports) |
-
-`src/utils/analyzeData.ts`, `networkGraph.ts`, and `narration.ts` are thin re-exports so existing tests keep the same import paths.
 
 UI routes: `/` landing, `/overview` home + network, `/journey` time mode, `/network` network, `/discoveries` patterns + chapters, `/search`, `/moment/:id`. Legacy `/connections`, `/patterns`, `/places`, `/chapters` redirect.
 
@@ -193,17 +189,16 @@ FrontEnd_Arena/
 ├── public/
 ├── src/
 │   ├── App.tsx
-│   ├── store.ts              # re-export of state/lifeStore
-│   ├── state/                # Zustand LifeStore
-│   ├── domain/               # insights, search, graph, narration copy, story
-│   ├── components/           # network canvas/filters, narration dock, UI
+│   ├── store.ts              # Zustand LifeStore + edgesByNode index
+│   ├── store.test.ts
+│   ├── components/           # network, narration dock, UI, ErrorBoundary
 │   ├── data/                 # csv, normalize, connections, chapters, worker
-│   ├── hooks/                # graph model, story playback, narration engine
+│   ├── hooks/                # narration, mobile, reduced motion
 │   ├── layouts/              # AppShell, Header, Sidebar
 │   ├── lib/                  # sanitize, validateReceipt
-│   ├── pages/
+│   ├── pages/                # Landing, Overview, Journey, Network, Discoveries, Search, Moment
 │   ├── scene/                # MemoryUniverse (landing 3D)
-│   ├── utils/                # format, constants, thin re-exports
+│   ├── utils/                # insights, graph sample, narration copy, format
 │   └── test/                 # Vitest setup
 ├── vercel.json
 ├── vite.config.ts
@@ -253,17 +248,17 @@ Current suites (under `src/**/*.test.ts(x)`):
 | --- | --- |
 | `data/csv.test.ts` | Quoted fields, BOM |
 | `data/normalize.test.ts` | Invalid dates skipped; household/Spotify mapping |
-| `data/connectionEngine.test.ts` | Temporal, location, shared-tag edges; no edges for a lone receipt |
-| `utils/analyzeData.search.test.ts` | Empty / title / location / type search |
+| `data/connectionEngine.test.ts` | Temporal, location, shared-tag edges; no edges for a lone receipt; `buildEdgeIndex` |
+| `utils/networkGraph.test.ts` | Year/location graph sample; story path from real edges; place co-occurrence reason |
+| `store.test.ts` | Receipt selection, `applyTrace`, `clearLenses`, indexed `neighborIds` |
+| `utils/analyzeData.search.test.ts` | Empty / title / location / type / extra.artist search |
 | `lib/sanitize.test.ts` | Control chars; `javascript:` URLs rejected |
 | `lib/validateReceipt.test.ts` | Malformed records; duplicate ids |
 | `hooks/useNarration.test.ts` | Pause/resume/stop; no autoplay |
-| `hooks/useFocusTrap.test.tsx` | Dialog Tab cycle, Escape, focus restore |
-| `components/FilterChips.test.tsx` | Accessible name; category filter |
+| `components/network/StoryPanel.test.tsx` | Dialog name; Escape closes selection |
+| `pages/Search.test.tsx` | Combobox labelling; arrows; Escape clears query |
+| `components/FilterChips.test.tsx` | Accessible name; category filter; All resets types |
 | `components/ErrorBoundary.test.tsx` | Recovery actions instead of a blank screen |
-| `components/network/ConnectedMomentsList.test.tsx` | Graph keyboard listbox; arrows / Enter / Space |
-| `components/network/StoryPanel.test.tsx` | Dialog name; Escape closes |
-| `pages/Search.test.tsx` | Combobox name; arrows; Escape clears |
 
 These tests use small fixtures. They do not download the full production CSVs.
 
@@ -274,19 +269,19 @@ These tests use small fixtures. They do not download the full production CSVs.
 Implemented (not a WCAG audit certificate):
 
 - `lang="en"` on `index.html`, skip-to-content link in `AppShell`
-- Buttons for interactive controls (discoveries, filters, layout modes, narration)
+- Buttons for interactive controls (stats, discoveries, filters, narration)
 - `:focus-visible` outline in `src/index.css`
 - Header search labelled; `/` focuses it when not typing in another field
-- Story panel: `role="dialog"`, `aria-modal`, labelled heading, **focus trap**, Escape closes, focus restored
+- Story panel: `role="dialog"`, `aria-modal`, labelled heading, Escape closes
 - Toasts: `role="status"` `aria-live="polite"`
-- Loading archive: `role="status"`; archive errors use `role="alert"`
+- Loading archive: `role="status"`
 - Filter chips: `role="group"` + `aria-pressed`
-- Memory Network: **keyboard listbox** of connected moments (or places in Places mode). Arrow / Home / End move; Enter or Space selects. Canvas nodes are not in the tab order.
-- Search combobox: `aria-activedescendant`, arrows, Enter opens, Escape clears
-- `prefers-reduced-motion`: landing skips R3F; CSS disables dust / core pulse; graph fit-view duration is 0; follow-story wait is 0
-- Color is not the only cue: type icons + labels sit on list rows, chips, and story details
+- Memory Network: visible list of up to 20 moments in the current sample (keyboard alternative to the canvas)
+- Search combobox pattern with `aria-activedescendant` and arrow-key movement
+- `prefers-reduced-motion`: landing skips R3F; CSS disables dust / core pulse
+- Color is not the only cue: type icons + labels sit on nodes and list rows
 
-Accessibility-oriented tests: `useFocusTrap.test.tsx`, `ConnectedMomentsList.test.tsx`, `StoryPanel.test.tsx`, `pages/Search.test.tsx`, plus FilterChips / ErrorBoundary.
+Gaps that remain: no full screen-reader QA pass, no jsx-a11y ESLint plugin (peer conflict with current ESLint), graph canvas itself is pointing-device oriented.
 
 ---
 
@@ -294,19 +289,18 @@ Accessibility-oriented tests: `useFocusTrap.test.tsx`, `ConnectedMomentsList.tes
 
 Implemented optimizations:
 
-- Archive parse/connect/insight work runs in a **module Web Worker**, 120s timeout, then a dynamically imported main-thread fallback (not on the first paint)
-- Landing and `AppShell` are split: the hero can render while the archive is still parsing
-- Overview, patterns, years, and top location stats are **computed once at load** and stored, with `receiptById` / `edgesByNode` indexes
-- Memory Network **geometry is independent of selection**. Clicking a node updates highlight state inside node/edge components; React Flow does not rebuild positions
+- Archive parse/connect/insight work runs in a **module Web Worker**, 120s timeout, then main-thread fallback
+- Overview, patterns, years, and top location stats are **computed once at load** and stored
+- Graph **layout** is memoized separately from selection highlighting (`MemoryEdge` / nodes read selection from the store)
+- Neighbor lookups use `buildEdgeIndex` (`edgesByNode`) so selection does not scan every edge
 - Graph sample: 96 nodes desktop, **48 on mobile**; related types kept when filtering
 - Connection detector is capped (see §6)
-- `React.lazy` / `Suspense` for AppShell, Overview, Journey, Network, Discoveries, Search, Moment, and `MemoryUniverse`
-- Landing 3D pauses when `document.visibilityState !== "visible"` or the canvas is off-screen (`IntersectionObserver`); geometries dispose on unmount
-- Header search is **debounced**; the search page uses `useDeferredValue`; field checks stop at the result cap
-- Reduced motion skips the heavy landing scene; mobile skips grain overlay and uses fewer graph/3D particles
-- Google Fonts load only weights 400, 600, and 800
+- `React.lazy` for Overview, Journey, Network, Discoveries, Search, Moment, and `MemoryUniverse`
+- Landing 3D uses `frameloop="never"` while `document.hidden`
+- Search results are **capped** (40 on the search page)
+- Reduced motion skips the heavy landing scene
 
-Honest limits: the Spotify CSV is a large static asset; first load still transfers and parses the official files in the browser. The canvas cannot draw every row. The Three.js landing chunk remains large and is loaded only when 3D is shown.
+Honest limits: the Spotify CSV is a large static asset; first load still transfers and parses the official files in the browser. The canvas cannot draw every row.
 
 ---
 
@@ -328,12 +322,11 @@ Frontend-only practices in this repo:
 
 | Viewport | Behavior |
 | --- | --- |
-| 320–767px | Bottom nav with Home, Journey, Network, Discover, **Search**. Header search stays. Story details open as a **bottom sheet**. Filters collapse into a compact panel with year/month selects. Graph is shorter, pinch-zoom, 44px controls. Voice pause/stop sits above the nav while speaking. |
-| 768–1023px | Left sidebar appears; bottom nav hides. Story remains a bottom sheet so it does not cover the graph. Compact filters stay until 1024px. |
-| 1024px and up | Side story card, full year/month chip rails, wider graph, narration dock at the lower left. |
-| 1280–1920px | Same desktop model; content max-width keeps the museum layout from stretching. |
+| `md` and up | Left sidebar, header search, full narration dock label |
+| Below `md` | Bottom nav (Home / Journey / Network / Discover), story panel above the nav, compact 🔊 control |
+| Mobile / reduced motion | No landing WebGL; 2D fallback; smaller graph sample; fewer 3D particles if the scene does run |
 
-Touch targets are at least 44px where users tap. `viewport-fit=cover` and safe-area padding keep the home indicator from covering nav. Horizontal overflow is clipped; year/month/category rows scroll inside themselves on desktop. Reduced motion skips landing 3D, page-slide, and sheet motion beyond a fade.
+Year/month chips scroll horizontally. Network height is `min(68vh, 640px)`.
 
 ---
 
@@ -373,13 +366,13 @@ Typography is editorial; the palette is dark and restrained. Neon is limited so 
 
 Suggested judge path (about two minutes):
 
-1. **Landing** — title, three-line legend (dots, lines, click), “Enter the memory network”.
-2. **Home / Overview** — Memory Network first. Each colored dot is a moment; lines are relationships.
-3. Click a **dot** — it brightens, neighbors stay lit, story panel opens; connected moments list with reasons.
+1. **Landing** — title, live counts from the loaded archive, “Enter the memory network”.
+2. **Home / Overview** — four interactive stats, then the Memory Network.
+3. Click a **node** — panel opens; connected moments list with reasons.
 4. Click a **connection line** — “Why are these connected?”
 5. **Follow the story** — camera walks the path.
 6. **Tell the story** — optional voice; dock shows pause/stop.
-7. **Discoveries** — Show on network or Explain this; or Tell this chapter.
+7. **Discoveries** — Trace a pattern or Explain this; or Tell this chapter.
 8. **Search** — `/`, type a song or place, Enter to focus it on the network.
 
 ---
