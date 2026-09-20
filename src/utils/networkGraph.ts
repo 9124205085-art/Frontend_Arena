@@ -39,6 +39,11 @@ function passesLens(r: Receipt, f: GraphFilter): boolean {
   return true;
 }
 
+/**
+ * Pick a drawable sample of official receipts for React Flow.
+ * Highest-degree connected records are seeded first; neighbors stay visible so
+ * category filters do not orphan relationships. Default cap is 96 nodes (48 on mobile).
+ */
 export function pickGraphReceipts(
   receipts: Receipt[],
   edges: ConnectionEdge[],
@@ -118,6 +123,10 @@ export function layoutPlaces(locations: { location: string; count: number }[]): 
   return map;
 }
 
+/**
+ * Edges between named places that appear on the same calendar day.
+ * Used by Places mode on the Memory Network (not the main relationship engine).
+ */
 export function placeCooccurrence(
   receipts: Receipt[],
   names: string[],
@@ -151,6 +160,10 @@ export function placeCooccurrence(
   return out;
 }
 
+/**
+ * Walk from a selected receipt along its highest-weight edges (default 5 nodes).
+ * Used by Follow the story / Tell the story. Path is sorted by timestamp.
+ */
 export function buildStoryPath(seed: Receipt, receipts: Receipt[], edges: ConnectionEdge[], max = 5): Receipt[] {
   const byId = new Map(receipts.map((r) => [r.id, r]));
   const ordered: Receipt[] = [seed];

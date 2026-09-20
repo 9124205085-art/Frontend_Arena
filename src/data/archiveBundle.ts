@@ -27,6 +27,11 @@ export function receiptsFromCsvTexts(householdText: string, spotifyText: string,
   return dedupeReceipts(receipts).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 }
 
+/**
+ * Parse the three official CSV texts into receipts, then compute connections,
+ * chapters, overview stats, and discovery patterns in one pass.
+ * Used by the archive Web Worker (and the main-thread fallback).
+ */
 export function buildArchiveBundle(householdText: string, spotifyText: string, indiaText: string) {
   const receipts = receiptsFromCsvTexts(householdText, spotifyText, indiaText);
   const edges = detectConnections(receipts);

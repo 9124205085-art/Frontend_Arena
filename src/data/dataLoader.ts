@@ -26,6 +26,10 @@ async function fetchText(url: string, label: string): Promise<string> {
   return res.text();
 }
 
+/**
+ * Fetch the three official CSVs, then parse/connect/analyze off the main thread.
+ * Worker timeout is 120s; on timeout, crash, or missing Worker, falls back to `buildArchiveBundle`.
+ */
 export async function loadOfficialArchive(): Promise<ArchiveBundle> {
   const [household, spotify, india] = await Promise.all([
     fetchText(OFFICIAL_SOURCES.household.url, "household"),

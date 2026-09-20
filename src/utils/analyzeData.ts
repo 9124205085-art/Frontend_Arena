@@ -140,6 +140,11 @@ function topCount(map: Map<string, number>): [string, number] | null {
   return top ?? null;
 }
 
+/**
+ * Count patterns that exist in this archive. Each body string is interpolated
+ * from live tallies (hours, locations, artists, household categories).
+ * Patterns with zero evidence are omitted — they are not hardcoded stories.
+ */
 export function getPatterns(receipts: Receipt[]): Pattern[] {
   if (!receipts.length) return [];
   const hours = getHourlyActivity(receipts);
@@ -251,6 +256,7 @@ export function getPatterns(receipts: Receipt[]): Pattern[] {
   return patterns;
 }
 
+/** Totals derived from the loaded archive (receipt count, days, places, peak hour). Cached in the store at load. */
 export function getOverview(receipts: Receipt[]) {
   const days = new Set(receipts.map((r) => dayStamp(r.timestamp)));
   const months = new Set(receipts.map((r) => r.timestamp.slice(0, 7)));
@@ -324,6 +330,10 @@ export function getPatternTraceIds(receipts: Receipt[], patternId: string, limit
   return [];
 }
 
+/**
+ * Case-insensitive search over title, description, tags, location, type, timestamp, and selected extra fields.
+ * Optional phrase aliases expand contest-style queries (e.g. "late night" → nocturnal mood).
+ */
 export function searchReceipts(query: string, receipts: Receipt[], limit = 80): Receipt[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];

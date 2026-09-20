@@ -107,6 +107,7 @@ export function extractHouseholdLocation(text: string): string | undefined {
   return named?.[0];
 }
 
+/** Map a household CSV row. Returns null when `Date` cannot be parsed. */
 export function fromHousehold(row: HouseholdRow, index: number): Receipt | null {
   const date = parseHouseholdDate(row.Date);
   if (!date) return null;
@@ -149,6 +150,7 @@ export function fromHousehold(row: HouseholdRow, index: number): Receipt | null 
   });
 }
 
+/** Map a Spotify CSV row. Returns null when `ts` cannot be parsed. */
 export function fromSpotify(row: SpotifyRow, index: number): Receipt | null {
   const date = parseSpotifyDate(row.ts);
   if (!date) return null;
@@ -191,6 +193,7 @@ function cleanMerchant(raw: string): string {
   return raw.replace(/^fraud_/i, "").replace(/\s+Pvt Ltd$/i, "").trim();
 }
 
+/** Map an India-transaction row. Card numbers are not copied onto the receipt. Returns null when the date cannot be parsed. */
 export function fromIndia(row: IndiaRow, index: number): Receipt | null {
   const date = parseIndiaDate(row.trans_date_trans_time);
   if (!date) return null;

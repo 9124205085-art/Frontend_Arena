@@ -81,6 +81,11 @@ function uniqueIds(ids: (string | null | undefined)[]): string[] {
   return [...new Set(ids.filter((id): id is string => Boolean(id)))];
 }
 
+/**
+ * One spoken beat per receipt in a connected path, plus a closing cluster line.
+ * Copy is generated from timestamp, type, title, artist, and location fields
+ * already present on the receipt — never from a canned script.
+ */
 export function buildMomentNarration(path: Receipt[]): NarrationStep[] {
   if (!path.length) return [];
   const ordered = [...path].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
@@ -255,6 +260,11 @@ function applyVisual(s: NarrationStep) {
   }
 }
 
+/**
+ * Play a narration sequence: highlight the matching node as each utterance starts.
+ * Must be called from a user gesture so SpeechSynthesis is allowed.
+ * Voice never starts on page load.
+ */
 export function startNarration(steps: NarrationStep[]) {
   const engine = getNarrationEngine();
   const store = useLifeStore.getState();

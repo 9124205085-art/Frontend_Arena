@@ -64,6 +64,11 @@ function pushEdge(
 const MAX_EDGES_PER_NODE = 8;
 const MAX_EDGES = 10_000;
 
+/**
+ * Build a capped, weighted graph of receipts.
+ * Edges are never random: each rule writes a human-readable `detail`.
+ * Caps: 90-minute temporal window, max 3 temporal neighbors, 10k edges, 8 per node.
+ */
 export function detectConnections(receipts: Receipt[]): ConnectionEdge[] {
   const edges = new Map<string, ConnectionEdge>();
   const ordered = [...receipts].sort((x, y) => x.timestamp.localeCompare(y.timestamp));

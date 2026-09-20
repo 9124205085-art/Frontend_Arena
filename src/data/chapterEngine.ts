@@ -51,6 +51,10 @@ export function assignStory(r: Receipt): StoryVisual {
   return "wander";
 }
 
+/**
+ * One chapter per official source that actually produced receipts.
+ * Copy is interpolated from count, type mix, top artist/category/place, and date span.
+ */
 export function detectChapters(receipts: Receipt[]): Chapter[] {
   const buckets: Record<StoryVisual, Receipt[]> = { frequency: [], ledger: [], wander: [] };
   for (const r of receipts) buckets[assignStory(r)].push(r);
