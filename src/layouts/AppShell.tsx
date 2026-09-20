@@ -24,9 +24,10 @@ export default function AppShell() {
         <main id="main" className="flex-1 overflow-x-hidden pb-24 md:pb-10">
           <motion.div
             key={location.pathname}
-            initial={{ opacity: 0, y: 18 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            style={{ viewTransitionName: "page" }}
           >
             <Outlet />
           </motion.div>
@@ -36,7 +37,7 @@ export default function AppShell() {
       <NarrationDock />
       <StoryPanel />
       {toast && (
-        <p className="glass pointer-events-none fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-xs md:bottom-8">
+        <p role="status" aria-live="polite" className="glass pointer-events-none fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-xs md:bottom-8">
           {toast}
         </p>
       )}

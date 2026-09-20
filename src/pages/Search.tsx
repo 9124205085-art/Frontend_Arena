@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { neighborIds, useLifeStore } from "../store";
 import { searchReceipts } from "../utils/analyzeData";
@@ -13,8 +13,9 @@ export default function SearchPage() {
   const query = useLifeStore((s) => s.query);
   const setQuery = useLifeStore((s) => s.setQuery);
   const applyTrace = useLifeStore((s) => s.applyTrace);
+  const [active, setActive] = useState(0);
 
-  const results = useMemo(() => (query.trim() ? searchReceipts(query, receipts) : []), [query, receipts]);
+  const results = useMemo(() => (query.trim() ? searchReceipts(query, receipts, 40) : []), [query, receipts]);
   const grouped = useMemo(() => {
     const m = new Map<string, typeof results>();
     for (const r of results) {
@@ -25,15 +26,42 @@ export default function SearchPage() {
     return [...m.entries()];
   }, [results]);
 
+  function openResult(id: string) {
+    applyTrace([id, ...neighborIds(id, edges)]);
+    navigate("/network");
+  }
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 md:px-8">
       <PageIntro kicker="Curiosity" title="What are you curious about?" />
       <input
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setActive(0);
+        }}
+        onKeyDown={(e) => {
+          if (!results.length) return;
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setActive((i) => Math.min(results.length - 1, i + 1));
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setActive((i) => Math.max(0, i - 1));
+          } else if (e.key === "Enter") {
+            e.preventDefault();
+            const hit = results[active];
+            if (hit) openResult(hit.id);
+          }
+        }}
         placeholder="Search your life…"
         className="mt-7 w-full rounded-2xl border border-white/[0.08] bg-[#121218] px-5 py-4 text-lg outline-none transition focus:border-accent/50 focus:shadow-[0_0_0_4px_rgba(124,107,255,0.12)]"
         aria-label="Search your life"
+        aria-controls="search-results"
+        aria-activedescendant={results[active] ? `result-${results[active].id}` : undefined}
+        role="combobox"
+        aria-expanded={Boolean(query.trim())}
+        aria-autocomplete="list"
       />
       <div className="mt-4 flex flex-wrap gap-2">
         {SUGGESTED_SEARCHES.map((s) => (
@@ -47,9 +75,9 @@ export default function SearchPage() {
           </button>
         ))}
       </div>
-      <p className="mt-6 text-sm text-mute">
+      <p className="mt-6 text-sm text-mute" role="status" aria-live="polite">
         {query.trim()
-          ? `${results.length.toLocaleString("en-IN")} matching traces`
+          ? `${results.length.toLocaleString("en-IN")} matching traces (capped sample)`
           : `The archive holds ${receipts.length.toLocaleString("en-IN")} official records. Search to browse them.`}
       </p>
       {!query.trim() ? (
@@ -57,7 +85,7 @@ export default function SearchPage() {
       ) : grouped.length === 0 ? (
         <EmptyState title="Nothing matched" body="Try a place, a song, a time of day — or one of the suggested questions." />
       ) : (
-        <div className="mt-6 space-y-8">
+        <div id="search-results" className="mt-6 space-y-8" role="listbox" aria-label="Search results">
           {grouped.map(([type, items]) => (
             <section key={type}>
               <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-mute">
@@ -65,15 +93,13 @@ export default function SearchPage() {
               </h2>
               <div className="mt-3 grid gap-3 md:grid-cols-2">
                 {items.slice(0, 8).map((r) => (
-                  <MomentCard
-                    key={r.id}
-                    receipt={r}
-                    onOpen={() => {
-                      applyTrace([r.id, ...neighborIds(r.id, edges)]);
-                      navigate("/network");
-                    }}
-                    connections={neighborIds(r.id, edges).length}
-                  />
+                  <div key={r.id} id={`result-${r.id}`} role="option" aria-selected={results[active]?.id === r.id}>
+                    <MomentCard
+                      receipt={r}
+                      onOpen={() => openResult(r.id)}
+                      connections={neighborIds(r.id, edges).length}
+                    />
+                  </div>
                 ))}
               </div>
             </section>

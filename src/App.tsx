@@ -1,14 +1,24 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import ErrorBoundary from "./components/ErrorBoundary";
 import AppShell from "./layouts/AppShell";
 import Landing from "./pages/Landing";
-import Overview from "./pages/Overview";
-import Journey from "./pages/Journey";
-import Network from "./pages/Network";
-import Discoveries from "./pages/Discoveries";
-import Moment from "./pages/Moment";
-import SearchPage from "./pages/Search";
 import { useLifeStore } from "./store";
+
+const Overview = lazy(() => import("./pages/Overview"));
+const Journey = lazy(() => import("./pages/Journey"));
+const Network = lazy(() => import("./pages/Network"));
+const Discoveries = lazy(() => import("./pages/Discoveries"));
+const Moment = lazy(() => import("./pages/Moment"));
+const SearchPage = lazy(() => import("./pages/Search"));
+
+function RouteFallback() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center text-sm text-mute" role="status">
+      Loading this view…
+    </div>
+  );
+}
 
 export default function App() {
   const load = useLifeStore((s) => s.load);
@@ -25,6 +35,13 @@ export default function App() {
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-accent">Archive unavailable</p>
           <p className="mt-4 max-w-md text-xl text-mute">{error}</p>
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="mt-6 rounded-full bg-accent px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white"
+          >
+            Try again
+          </button>
         </div>
       </div>
     );
@@ -32,7 +49,7 @@ export default function App() {
 
   if (!ready) {
     return (
-      <div className="grain flex min-h-svh flex-col items-center justify-center bg-ink">
+      <div className="grain flex min-h-svh flex-col items-center justify-center bg-ink" role="status" aria-live="polite">
         <div className="relative mb-8 h-16 w-16">
           <span className="animate-core absolute inset-0 rounded-full bg-accent/40 blur-xl" />
           <span className="absolute inset-4 rounded-full bg-accent shadow-glow" />
@@ -44,23 +61,27 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route element={<AppShell />}>
-          <Route path="/overview" element={<Overview />} />
-          <Route path="/journey" element={<Journey />} />
-          <Route path="/network" element={<Network />} />
-          <Route path="/discoveries" element={<Discoveries />} />
-          <Route path="/search" element={<SearchPage />} />
-          <Route path="/moment/:id" element={<Moment />} />
-          <Route path="/connections" element={<Navigate to="/network" replace />} />
-          <Route path="/patterns" element={<Navigate to="/discoveries" replace />} />
-          <Route path="/places" element={<Navigate to="/network" replace />} />
-          <Route path="/chapters" element={<Navigate to="/discoveries" replace />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route element={<AppShell />}>
+              <Route path="/overview" element={<Overview />} />
+              <Route path="/journey" element={<Journey />} />
+              <Route path="/network" element={<Network />} />
+              <Route path="/discoveries" element={<Discoveries />} />
+              <Route path="/search" element={<SearchPage />} />
+              <Route path="/moment/:id" element={<Moment />} />
+              <Route path="/connections" element={<Navigate to="/network" replace />} />
+              <Route path="/patterns" element={<Navigate to="/discoveries" replace />} />
+              <Route path="/places" element={<Navigate to="/network" replace />} />
+              <Route path="/chapters" element={<Navigate to="/discoveries" replace />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }

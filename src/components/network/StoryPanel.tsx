@@ -109,11 +109,20 @@ export default function StoryPanel() {
   }
 
   const open = Boolean(selected || selectedEdge || selectedPlace);
+  const panelRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const root = panelRef.current;
+    const focusable = root?.querySelector<HTMLElement>("button, [href], input, select, textarea");
+    focusable?.focus();
+  }, [open, selectedId]);
 
   return (
     <AnimatePresence>
       {open && (
         <motion.aside
+          ref={panelRef}
           role="dialog"
           aria-modal="true"
           aria-labelledby="story-title"

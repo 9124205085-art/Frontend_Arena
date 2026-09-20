@@ -4,6 +4,8 @@
  */
 
 import type { HouseholdRow, IndiaRow, Receipt, ReceiptType, SpotifyRow } from "./types";
+import { sanitizeText } from "../lib/sanitize";
+import { validateReceipt } from "../lib/validateReceipt";
 
 const STOP = new Set([
   "the",
@@ -113,7 +115,7 @@ export function fromHousehold(row: HouseholdRow, index: number): Receipt | null 
   const cat = (row.Category || "").trim();
   const sub = (row.Subcategory || "").trim();
   const amount = Number(row.Amount);
-  const title = note || [sub, cat].filter(Boolean).join(" · ") || "Household transaction";
+  const title = sanitizeText(note || [sub, cat].filter(Boolean).join(" · ") || "Household transaction", 160);
   const location = extractHouseholdLocation(`${note} ${cat} ${sub}`);
   const facts = [
     cat && sub ? `${cat} / ${sub}.` : cat ? `${cat}.` : "",
@@ -125,7 +127,7 @@ export function fromHousehold(row: HouseholdRow, index: number): Receipt | null 
     .filter(Boolean)
     .join(" ");
 
-  return {
+  return validateReceipt({
     id: slug(["hh", index, row.Date, cat, note]),
     type,
     timestamp: toIso(date),
@@ -144,7 +146,7 @@ export function fromHousehold(row: HouseholdRow, index: number): Receipt | null 
       subcategory: sub,
       incomeExpense: row["Income/Expense"],
     },
-  };
+  });
 }
 
 export function fromSpotify(row: SpotifyRow, index: number): Receipt | null {
@@ -157,7 +159,7 @@ export function fromSpotify(row: SpotifyRow, index: number): Receipt | null {
   const album = (row.album_name || "").trim();
   const track = (row.track_name || "").trim() || "Untitled track";
 
-  return {
+  return validateReceipt({
     id: slug(["sp", index, row.ts, row.spotify_track_uri || track]),
     type: "music",
     timestamp: toIso(date),
@@ -182,7 +184,7 @@ export function fromSpotify(row: SpotifyRow, index: number): Receipt | null {
       skipped,
       uri: row.spotify_track_uri,
     },
-  };
+  });
 }
 
 function cleanMerchant(raw: string): string {
@@ -202,7 +204,7 @@ export function fromIndia(row: IndiaRow, index: number): Receipt | null {
   const location = [city, state].filter(Boolean).join(", ") || undefined;
   const person = [row.first, row.last].filter(Boolean).join(" ").trim();
 
-  return {
+  return validateReceipt({
     id: slug(["in", index, row.trans_id, row.trans_date_trans_time]),
     type,
     timestamp: toIso(date),
@@ -232,5 +234,5 @@ export function fromIndia(row: IndiaRow, index: number): Receipt | null {
       person,
       trans_id: row.trans_id || "",
     },
-  };
+  });
 }

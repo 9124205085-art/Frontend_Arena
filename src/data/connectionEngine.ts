@@ -65,7 +65,6 @@ const MAX_EDGES_PER_NODE = 8;
 const MAX_EDGES = 10_000;
 
 export function detectConnections(receipts: Receipt[]): ConnectionEdge[] {
-  const byId = new Map(receipts.map((r) => [r.id, r]));
   const edges = new Map<string, ConnectionEdge>();
   const ordered = [...receipts].sort((x, y) => x.timestamp.localeCompare(y.timestamp));
 
@@ -203,12 +202,6 @@ export function detectConnections(receipts: Receipt[]): ConnectionEdge[] {
     kept.push(edge);
     used.set(edge.a, ca + 1);
     used.set(edge.b, cb + 1);
-  }
-
-  for (const r of receipts) r.relatedIds = [];
-  for (const edge of kept) {
-    byId.get(edge.a)?.relatedIds.push(edge.b);
-    byId.get(edge.b)?.relatedIds.push(edge.a);
   }
 
   return kept;

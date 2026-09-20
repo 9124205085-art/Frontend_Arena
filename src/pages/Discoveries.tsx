@@ -1,16 +1,16 @@
 import { useNavigate } from "react-router-dom";
 import { useLifeStore } from "../store";
-import { getPatternTraceIds, getPatterns } from "../utils/analyzeData";
+import { getPatternTraceIds } from "../utils/analyzeData";
 import { startChapterNarration, startPatternNarration } from "../utils/narration";
 
 export default function Discoveries() {
   const navigate = useNavigate();
   const receipts = useLifeStore((s) => s.receipts);
   const chapters = useLifeStore((s) => s.chapters);
+  const patterns = useLifeStore((s) => s.patterns);
   const applyTrace = useLifeStore((s) => s.applyTrace);
   const setHourLens = useLifeStore((s) => s.setHourLens);
   const setNetworkMode = useLifeStore((s) => s.setNetworkMode);
-  const patterns = getPatterns(receipts);
 
   function tracePattern(id: string) {
     if (id === "explorer") {

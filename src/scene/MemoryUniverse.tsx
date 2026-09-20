@@ -1,5 +1,5 @@
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useMemo, useRef, type MutableRefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import * as THREE from "three";
 import { TYPE_COLOR } from "../utils/constants";
 import { hashId, mulberry32 } from "../utils/format";
@@ -66,6 +66,13 @@ export default function MemoryUniverse({
   mobile: boolean;
 }) {
   const mouse = useRef({ x: 0, y: 0 });
+  const [hidden, setHidden] = useState(false);
+
+  useEffect(() => {
+    const onVis = () => setHidden(document.hidden);
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
 
   return (
     <div
@@ -80,6 +87,7 @@ export default function MemoryUniverse({
         camera={CAMERA}
         dpr={mobile ? DPR_M : DPR_D}
         gl={mobile ? GL_M : GL_D}
+        frameloop={hidden ? "never" : "always"}
         onCreated={({ scene, gl }) => {
           scene.fog = new THREE.Fog("#07070A", 6.5, 19);
           scene.background = new THREE.Color("#07070A");

@@ -1,12 +1,24 @@
 /**
- * Loads the official archive CSVs and normalizes them.
- * Does not read public/data/bundle.json (sampled + invented derived rows).
+ * Loads the official archive CSVs and normalizes them off the main thread.
+ * Does not read public/data/bundle.json.
  */
 
-import { parseCsv } from "./csv";
-import { fromHousehold, fromIndia, fromSpotify } from "./normalize";
 import { OFFICIAL_SOURCES } from "./sources";
-import type { HouseholdRow, IndiaRow, Receipt, SpotifyRow } from "./types";
+import { buildArchiveBundle, receiptsFromCsvTexts } from "./archiveBundle";
+import type { Chapter, ConnectionEdge, Receipt, ReceiptType } from "./types";
+import type { Pattern } from "../utils/analyzeData";
+import { getLocationStats } from "../utils/analyzeData";
+
+export type ArchiveBundle = {
+  receipts: Receipt[];
+  edges: ConnectionEdge[];
+  chapters: Chapter[];
+  presentTypes: ReceiptType[];
+  overview: ReturnType<typeof import("../utils/analyzeData").getOverview>;
+  patterns: Pattern[];
+  years: number[];
+  locationStats: ReturnType<typeof getLocationStats>;
+};
 
 async function fetchText(url: string, label: string): Promise<string> {
   const res = await fetch(url);
@@ -14,39 +26,47 @@ async function fetchText(url: string, label: string): Promise<string> {
   return res.text();
 }
 
-export async function loadOfficialReceipts(): Promise<Receipt[]> {
-  const [householdText, spotifyText, indiaText] = await Promise.all([
+export async function loadOfficialArchive(): Promise<ArchiveBundle> {
+  const [household, spotify, india] = await Promise.all([
     fetchText(OFFICIAL_SOURCES.household.url, "household"),
     fetchText(OFFICIAL_SOURCES.spotify.url, "spotify"),
     fetchText(OFFICIAL_SOURCES.india.url, "india transactions"),
   ]);
 
-  const receipts: Receipt[] = [];
+  if (typeof Worker !== "undefined") {
+    try {
+      const worker = new Worker(new URL("./archive.worker.ts", import.meta.url), { type: "module" });
+      return await new Promise<ArchiveBundle>((resolve, reject) => {
+        const timer = window.setTimeout(() => {
+          worker.terminate();
+          reject(new Error("Archive worker timed out"));
+        }, 120_000);
+        worker.onmessage = (event: MessageEvent<{ ok: boolean; bundle?: ArchiveBundle; error?: string }>) => {
+          window.clearTimeout(timer);
+          worker.terminate();
+          if (event.data.ok && event.data.bundle) resolve(event.data.bundle);
+          else reject(new Error(event.data.error || "Archive worker failed"));
+        };
+        worker.onerror = () => {
+          window.clearTimeout(timer);
+          worker.terminate();
+          reject(new Error("Archive worker crashed"));
+        };
+        worker.postMessage({ household, spotify, india });
+      });
+    } catch {
+      return buildArchiveBundle(household, spotify, india);
+    }
+  }
 
-  parseCsv(householdText).forEach((row, i) => {
-    const r = fromHousehold(row as unknown as HouseholdRow, i);
-    if (r) receipts.push(r);
-  });
-
-  parseCsv(spotifyText).forEach((row, i) => {
-    const r = fromSpotify(row as unknown as SpotifyRow, i);
-    if (r) receipts.push(r);
-  });
-
-  parseCsv(indiaText).forEach((row, i) => {
-    const r = fromIndia(row as unknown as IndiaRow, i);
-    if (r) receipts.push(r);
-  });
-
-  receipts.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-  return receipts;
+  return buildArchiveBundle(household, spotify, india);
 }
 
-/** @deprecated Use loadOfficialReceipts — kept so leftover files still typecheck if imported. */
-export async function loadBundle(): Promise<never> {
-  throw new Error("Sample bundle disabled. The app reads the official archive CSVs.");
-}
-
-export function normalizeBundle(): Receipt[] {
-  return [];
+export async function loadOfficialReceipts(): Promise<Receipt[]> {
+  const [household, spotify, india] = await Promise.all([
+    fetchText(OFFICIAL_SOURCES.household.url, "household"),
+    fetchText(OFFICIAL_SOURCES.spotify.url, "spotify"),
+    fetchText(OFFICIAL_SOURCES.india.url, "india transactions"),
+  ]);
+  return receiptsFromCsvTexts(household, spotify, india);
 }

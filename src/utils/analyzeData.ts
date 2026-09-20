@@ -324,7 +324,7 @@ export function getPatternTraceIds(receipts: Receipt[], patternId: string, limit
   return [];
 }
 
-export function searchReceipts(query: string, receipts: Receipt[]): Receipt[] {
+export function searchReceipts(query: string, receipts: Receipt[], limit = 80): Receipt[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
   const aliases: Record<string, string[]> = {
@@ -336,11 +336,16 @@ export function searchReceipts(query: string, receipts: Receipt[]): Receipt[] {
   };
   const extra = aliases[q] ?? [];
   const nightHours = q.includes("late night") || q.includes("late nights");
-  return receipts.filter((r) => {
-    if (nightHours && (hourOf(r.timestamp) >= 22 || hourOf(r.timestamp) <= 1)) return true;
-    const blob =
-      `${r.title} ${r.description} ${r.tags.join(" ")} ${r.location || ""} ${r.type} ${r.mood || ""} ${r.timestamp} ${r.extra?.artist || ""} ${r.extra?.merchant || ""} ${r.extra?.person || ""} ${r.extra?.category || ""} ${r.source}`.toLowerCase();
-    if (blob.includes(q)) return true;
-    return extra.some((k) => blob.includes(k));
-  });
+  const out: Receipt[] = [];
+  for (const r of receipts) {
+    if (nightHours && (hourOf(r.timestamp) >= 22 || hourOf(r.timestamp) <= 1)) {
+      out.push(r);
+    } else {
+      const blob =
+        `${r.title} ${r.description} ${r.tags.join(" ")} ${r.location || ""} ${r.type} ${r.mood || ""} ${r.timestamp} ${r.extra?.artist || ""} ${r.extra?.merchant || ""} ${r.extra?.person || ""} ${r.extra?.category || ""} ${r.source}`.toLowerCase();
+      if (blob.includes(q) || extra.some((k) => blob.includes(k))) out.push(r);
+    }
+    if (out.length >= limit) break;
+  }
+  return out;
 }

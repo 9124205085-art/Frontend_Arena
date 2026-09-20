@@ -1,5 +1,6 @@
+import { useMemo } from "react";
 import { useLifeStore } from "../store";
-import { getOverview, getPatternTraceIds, getPatterns } from "../utils/analyzeData";
+import { getPatternTraceIds } from "../utils/analyzeData";
 import { startPatternNarration } from "../utils/narration";
 import MemoryNetwork from "../components/network/MemoryNetwork";
 import { CountUp } from "../components/ui";
@@ -7,15 +8,17 @@ import { CountUp } from "../components/ui";
 export default function Overview() {
   const receipts = useLifeStore((s) => s.receipts);
   const edges = useLifeStore((s) => s.edges);
+  const stats = useLifeStore((s) => s.overview);
+  const discoveries = useLifeStore((s) => s.patterns).slice(0, 3);
   const clearLenses = useLifeStore((s) => s.clearLenses);
   const setNetworkMode = useLifeStore((s) => s.setNetworkMode);
   const setHourLens = useLifeStore((s) => s.setHourLens);
   const applyTrace = useLifeStore((s) => s.applyTrace);
-  const stats = getOverview(receipts);
-  const connected = new Set(edges.flatMap((e) => [e.a, e.b])).size;
-  const discoveries = getPatterns(receipts).slice(0, 3);
+  const connected = useMemo(() => new Set(edges.flatMap((e) => [e.a, e.b])).size, [edges]);
 
   const toNetwork = () => document.getElementById("network-anchor")?.scrollIntoView({ behavior: "smooth" });
+
+  if (!stats) return null;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 md:px-8">

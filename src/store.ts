@@ -1,12 +1,15 @@
 import { useMemo } from "react";
 import { create } from "zustand";
-import { detectChapters } from "./data/chapterEngine";
-import { detectConnections, otherId } from "./data/connectionEngine";
-import { loadOfficialReceipts } from "./data/dataLoader";
+import { otherId } from "./data/connectionEngine";
+import { loadOfficialArchive } from "./data/dataLoader";
 import type { Chapter, ConnectionEdge, Receipt, ReceiptType } from "./data/types";
-import { searchReceipts } from "./utils/analyzeData";
+import { searchReceipts, type Pattern } from "./utils/analyzeData";
 import { logDatasetReport } from "./utils/validateDataset";
 import type { HourLens, NetworkMode } from "./utils/networkGraph";
+import { getLocationStats, getOverview } from "./utils/analyzeData";
+
+type OverviewStats = ReturnType<typeof getOverview>;
+type LocationStat = ReturnType<typeof getLocationStats>[number];
 
 interface LifeState {
   ready: boolean;
@@ -28,6 +31,10 @@ interface LifeState {
   traceIds: string[] | null;
   storyPlaying: boolean;
   toast: string | null;
+  overview: OverviewStats | null;
+  patterns: Pattern[];
+  years: number[];
+  locationStats: LocationStat[];
   load: () => Promise<void>;
   select: (id: string | null) => void;
   selectEdge: (edge: ConnectionEdge | null) => void;
@@ -67,15 +74,28 @@ export const useLifeStore = create<LifeState>((set, get) => ({
   traceIds: null,
   storyPlaying: false,
   toast: null,
+  overview: null,
+  patterns: [],
+  years: [],
+  locationStats: [],
 
   load: async () => {
     try {
-      const receipts = await loadOfficialReceipts();
-      const edges = detectConnections(receipts);
-      const chapters = detectChapters(receipts);
-      const presentTypes = [...new Set(receipts.map((r) => r.type))];
-      logDatasetReport(receipts, { connections: edges.length, chapters: chapters.length });
-      set({ receipts, edges, chapters, presentTypes, activeTypes: presentTypes, ready: true, error: null });
+      const bundle = await loadOfficialArchive();
+      logDatasetReport(bundle.receipts, { connections: bundle.edges.length, chapters: bundle.chapters.length });
+      set({
+        receipts: bundle.receipts,
+        edges: bundle.edges,
+        chapters: bundle.chapters,
+        presentTypes: bundle.presentTypes,
+        activeTypes: bundle.presentTypes,
+        overview: bundle.overview,
+        patterns: bundle.patterns,
+        years: bundle.years,
+        locationStats: bundle.locationStats,
+        ready: true,
+        error: null,
+      });
     } catch (err) {
       set({ error: err instanceof Error ? err.message : "Failed to load archive", ready: false });
     }
@@ -158,7 +178,7 @@ export function useVisibleReceipts(): Receipt[] {
   return useMemo(() => {
     const typed = receipts.filter((r) => types.includes(r.type));
     if (!query.trim()) return typed;
-    const found = new Set(searchReceipts(query, typed).map((r) => r.id));
+    const found = new Set(searchReceipts(query, typed, 400).map((r) => r.id));
     return typed.filter((r) => found.has(r.id));
   }, [receipts, query, types]);
 }

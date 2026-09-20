@@ -10,14 +10,14 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { neighborIds, useLifeStore } from "../../store";
-import { getLocationStats, getYears } from "../../utils/analyzeData";
 import { formatDay } from "../../utils/format";
 import { layoutMoments, layoutPlaces, pickGraphReceipts, placeCooccurrence } from "../../utils/networkGraph";
-import { TYPE_LABEL } from "../../utils/constants";
+import { TYPE_ICON, TYPE_LABEL } from "../../utils/constants";
 import type { ConnectionEdge } from "../../data/types";
 import FilterChips from "../FilterChips";
 import { MomentNode } from "./MomentNode";
 import { PlaceNode } from "./PlaceNode";
+import { useIsMobile } from "../../hooks/useIsMobile";
 
 const nodeTypes = { moment: MomentNode, place: PlaceNode };
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -44,32 +44,41 @@ function NetworkCanvas() {
   const locationLens = useLifeStore((s) => s.locationLens);
   const traceIds = useLifeStore((s) => s.traceIds);
   const query = useLifeStore((s) => s.query);
+  const locs = useLifeStore((s) => s.locationStats);
+  const mobile = useIsMobile();
   const { fitView } = useReactFlow();
 
   const graph = useMemo(
     () =>
-      pickGraphReceipts(receipts, edges, {
-        types,
-        presentTypes: present,
-        year,
-        month,
-        hourLens,
-        location: locationLens,
-        traceIds,
-        query,
-      }),
-    [receipts, edges, types, present, year, month, hourLens, locationLens, traceIds, query],
+      pickGraphReceipts(
+        receipts,
+        edges,
+        {
+          types,
+          presentTypes: present,
+          year,
+          month,
+          hourLens,
+          location: locationLens,
+          traceIds,
+          query,
+        },
+        mobile ? 48 : 96,
+      ),
+    [receipts, edges, types, present, year, month, hourLens, locationLens, traceIds, query, mobile],
   );
 
-  const locs = useMemo(() => getLocationStats(receipts).slice(0, 28), [receipts]);
+  const positions = useMemo(() => {
+    if (mode === "places") return layoutPlaces(locs);
+    return layoutMoments(graph.nodes, mode);
+  }, [mode, locs, graph.nodes]);
 
   const rfNodes: Node[] = useMemo(() => {
     if (mode === "places") {
-      const pos = layoutPlaces(locs);
       return locs.map((l) => ({
         id: `place::${l.location}`,
         type: "place",
-        position: pos.get(l.location) ?? { x: 0, y: 0 },
+        position: positions.get(l.location) ?? { x: 0, y: 0 },
         zIndex: selectedPlace === l.location ? 8 : 1,
         data: {
           location: l.location,
@@ -82,14 +91,13 @@ function NetworkCanvas() {
         },
       }));
     }
-    const pos = layoutMoments(graph.nodes, mode);
     const neigh = selectedId ? new Set(neighborIds(selectedId, edges)) : null;
     return graph.nodes.map((n) => {
       const dim = Boolean(selectedId && selectedId !== n.id && !neigh?.has(n.id));
       return {
         id: n.id,
         type: "moment",
-        position: pos.get(n.id) ?? { x: 0, y: 0 },
+        position: positions.get(n.id) ?? { x: 0, y: 0 },
         zIndex: selectedId === n.id ? 10 : dim ? 0 : 2,
         data: {
           title: n.title,
@@ -101,7 +109,7 @@ function NetworkCanvas() {
         },
       };
     });
-  }, [mode, locs, graph.nodes, selectedPlace, selectedId, edges]);
+  }, [mode, locs, graph.nodes, positions, selectedPlace, selectedId, edges]);
 
   const rfEdges: Edge[] = useMemo(() => {
     if (mode === "places") {
@@ -261,12 +269,30 @@ export default function MemoryNetwork({ hint }: { hint?: string }) {
   const setMonth = useLifeStore((s) => s.setMonth);
   const receipts = useLifeStore((s) => s.receipts);
   const edges = useLifeStore((s) => s.edges);
-  const years = useMemo(() => getYears(receipts), [receipts]);
-  const connected = useMemo(() => new Set(edges.flatMap((e) => [e.a, e.b])).size, [edges]);
+  const years = useLifeStore((s) => s.years);
+  const select = useLifeStore((s) => s.select);
   const selectedId = useLifeStore((s) => s.selectedId);
-  const traceIds = useLifeStore((s) => s.traceIds);
+  const types = useLifeStore((s) => s.activeTypes);
+  const present = useLifeStore((s) => s.presentTypes);
   const hourLens = useLifeStore((s) => s.hourLens);
   const locationLens = useLifeStore((s) => s.locationLens);
+  const traceIds = useLifeStore((s) => s.traceIds);
+  const query = useLifeStore((s) => s.query);
+  const connected = useMemo(() => new Set(edges.flatMap((e) => [e.a, e.b])).size, [edges]);
+  const list = useMemo(
+    () =>
+      pickGraphReceipts(receipts, edges, {
+        types,
+        presentTypes: present,
+        year,
+        month,
+        hourLens,
+        location: locationLens,
+        traceIds,
+        query,
+      }).nodes.slice(0, 20),
+    [receipts, edges, types, present, year, month, hourLens, locationLens, traceIds, query],
+  );
   const clearLenses = useLifeStore((s) => s.clearLenses);
   const graphEmptyHint = receipts.length === 0;
 
@@ -383,6 +409,31 @@ export default function MemoryNetwork({ hint }: { hint?: string }) {
           </p>
         )}
       </div>
+
+      <section className="mt-4" aria-labelledby="graph-list-title">
+        <h3 id="graph-list-title" className="text-sm font-semibold">
+          {list.length} connected moments in this view
+        </h3>
+        <p className="mt-1 text-xs text-mute">Keyboard alternative to the canvas. Enter selects a receipt.</p>
+        <ul className="mt-3 max-h-48 space-y-1 overflow-y-auto rounded-2xl border border-white/[0.08] p-2">
+          {list.map((r) => (
+            <li key={r.id}>
+              <button
+                type="button"
+                aria-current={selectedId === r.id ? "true" : undefined}
+                onClick={() => select(r.id)}
+                className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm ${
+                  selectedId === r.id ? "bg-accent/20 text-white" : "text-mute hover:text-white"
+                }`}
+              >
+                <span aria-hidden>{TYPE_ICON[r.type]}</span>
+                <span className="min-w-0 flex-1 truncate">{r.title}</span>
+                <span className="shrink-0 text-[10px] uppercase tracking-wider">{TYPE_LABEL[r.type]}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }

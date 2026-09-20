@@ -1,26 +1,29 @@
+import { lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 import ErrorBoundary from "../components/ErrorBoundary";
 import MemoryFallback from "../components/MemoryFallback";
 import { CountUp, MagneticLink } from "../components/ui";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { usePrefersReducedMotion } from "../hooks/usePrefersReducedMotion";
-import MemoryUniverse from "../scene/MemoryUniverse";
 import { useLifeStore } from "../store";
-import { getOverview } from "../utils/analyzeData";
+
+const MemoryUniverse = lazy(() => import("../scene/MemoryUniverse"));
 
 export default function Landing() {
   const receipts = useLifeStore((s) => s.receipts);
   const edges = useLifeStore((s) => s.edges);
   const mobile = useIsMobile();
   const reduced = usePrefersReducedMotion();
-  const stats = getOverview(receipts);
+  const stats = useLifeStore((s) => s.overview);
   const show3d = !mobile && !reduced;
 
   return (
     <div className="grain vignette relative min-h-svh overflow-hidden bg-ink">
       {show3d ? (
         <ErrorBoundary>
-          <MemoryUniverse receipts={receipts} edges={edges} mobile={false} />
+          <Suspense fallback={<MemoryFallback />}>
+            <MemoryUniverse receipts={receipts} edges={edges} mobile={false} />
+          </Suspense>
         </ErrorBoundary>
       ) : (
         <MemoryFallback />
@@ -62,9 +65,9 @@ export default function Landing() {
           transition={{ delay: 0.62, duration: 0.7 }}
           className="mt-12 flex flex-wrap justify-center gap-10 text-[11px] font-semibold uppercase tracking-[0.22em] text-mute"
         >
-          <Stat n={stats.total} label="Moments" />
-          <Stat n={stats.categories} label="Categories" />
-          <Stat n={stats.months} label="Months" />
+          <Stat n={stats?.total ?? 0} label="Moments" />
+          <Stat n={stats?.categories ?? 0} label="Categories" />
+          <Stat n={stats?.months ?? 0} label="Months" />
         </motion.div>
 
         <motion.div
