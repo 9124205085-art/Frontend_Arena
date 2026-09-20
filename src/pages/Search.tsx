@@ -12,7 +12,7 @@ export default function SearchPage() {
   const setQuery = useLifeStore((s) => s.setQuery);
   const select = useLifeStore((s) => s.select);
 
-  const results = useMemo(() => searchReceipts(query, receipts), [query, receipts]);
+  const results = useMemo(() => (query.trim() ? searchReceipts(query, receipts) : []), [query, receipts]);
   const grouped = useMemo(() => {
     const m = new Map<string, typeof results>();
     for (const r of results) {
@@ -45,8 +45,14 @@ export default function SearchPage() {
           </button>
         ))}
       </div>
-      <p className="mt-6 text-sm text-mute">{results.length} matching traces</p>
-      {grouped.length === 0 ? (
+      <p className="mt-6 text-sm text-mute">
+        {query.trim()
+          ? `${results.length.toLocaleString("en-IN")} matching traces`
+          : `The archive holds ${receipts.length.toLocaleString("en-IN")} official records. Search to browse them.`}
+      </p>
+      {!query.trim() ? (
+        <EmptyState title="Ask the dataset something" body="Results are filtered from the official household, Spotify, and India archives — not from invented receipts." />
+      ) : grouped.length === 0 ? (
         <EmptyState title="Nothing matched" body="Try a place, a song, a time of day — or one of the suggested questions." />
       ) : (
         <div className="mt-6 space-y-8">

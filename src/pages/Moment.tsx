@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useLifeStore } from "../store";
-import { getClusters, getRelatedReceipts } from "../utils/analyzeData";
+import { getRelatedReceipts, receiptsOnDay } from "../utils/analyzeData";
 import { TYPE_COLOR, TYPE_LABEL } from "../utils/constants";
 import { formatWhen } from "../utils/format";
 
@@ -11,21 +11,35 @@ export default function Moment() {
   const receipts = useLifeStore((s) => s.receipts);
   const edges = useLifeStore((s) => s.edges);
   const seed = receipts.find((r) => r.id === id);
-  const clusters = getClusters(receipts, 2);
-  const cluster =
-    clusters.find((c) => c.receipts.some((r) => r.id === id)) ??
-    (seed
-      ? { id: seed.id, date: seed.timestamp.slice(0, 10), receipts: [seed, ...getRelatedReceipts(seed.id, receipts, edges)].slice(0, 6), types: [] }
-      : null);
 
-  const seq = useMemo(() => cluster?.receipts.slice(0, 6) ?? [], [cluster]);
+  const seq = useMemo(() => {
+    if (!seed) return [];
+    const related = getRelatedReceipts(seed.id, receipts, edges);
+    const sameDay = receiptsOnDay(receipts, seed.timestamp.slice(0, 10));
+    const mixed: typeof receipts = [seed];
+    const seen = new Set([seed.id]);
+    for (const r of related) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      mixed.push(r);
+    }
+    for (const r of sameDay) {
+      if (seen.has(r.id)) continue;
+      if (mixed.some((m) => m.type === r.type) && mixed.length >= 4) continue;
+      seen.add(r.id);
+      mixed.push(r);
+      if (mixed.length >= 6) break;
+    }
+    return mixed.slice(0, 6).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  }, [seed, receipts, edges]);
+
   const spanMin = useMemo(() => {
     if (seq.length < 2) return 0;
     const t = seq.map((r) => new Date(r.timestamp).getTime()).sort((a, b) => a - b);
     return Math.round((t[t.length - 1] - t[0]) / 60000);
   }, [seq]);
 
-  if (!seed || !cluster) {
+  if (!seed) {
     return (
       <div className="px-8 py-20 text-center text-mute">
         Moment not found.{" "}
@@ -47,6 +61,9 @@ export default function Moment() {
         <br />
         {seq.length} digital traces.
       </h1>
+      <p className="mt-4 text-sm text-mute">
+        These records appear connected because they share a date, a stored relationship, or both.
+      </p>
       <div className="mt-12 space-y-0">
         {seq.map((r, i) => (
           <motion.div
@@ -70,7 +87,7 @@ export default function Moment() {
       </div>
       {spanMin > 0 && (
         <p className="mt-12 text-center text-sm text-mute">
-          These moments happened within {spanMin} minutes of each other.
+          These records occurred within {spanMin} minutes of each other.
         </p>
       )}
     </div>

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useLifeStore } from "../store";
+import { assignStory } from "../data/chapterEngine";
 import { getCategoryStats, getChapters } from "../utils/analyzeData";
 import { TYPE_COLOR } from "../utils/constants";
 import { formatDay } from "../utils/format";
@@ -13,14 +14,14 @@ export default function Chapters() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 md:px-8">
       <PageIntro kicker="Chapters" title="Not months. Eras.">
-        Automatically named from what dominated each stretch of the archive.
+        Three official archives, described from their own counts — not invented months.
       </PageIntro>
       {chapters.length === 0 ? (
         <EmptyState title="No chapters yet" body="The archive needs more traces before eras can form." />
       ) : (
         <ol className="mt-12 space-y-8">
           {chapters.map((ch, i) => {
-            const members = receipts.filter((r) => ch.receiptIds.includes(r.id));
+            const members = receipts.filter((r) => assignStory(r) === ch.visual);
             const cats = getCategoryStats(members);
             return (
               <motion.li

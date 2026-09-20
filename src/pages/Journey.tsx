@@ -27,8 +27,21 @@ export default function Journey() {
     [receipts, types, query],
   );
 
-  const clusters = getClusters(visible, 2);
-  const focus = clusters.find((c) => c.date === day) ?? clusters[0];
+  const clusters = useMemo(() => getClusters(visible, 2, 24), [visible]);
+  const focusFromList = clusters.find((c) => c.date === day) ?? clusters[0];
+  const focus = useMemo(() => {
+    if (!day) return focusFromList;
+    if (focusFromList?.date === day) return focusFromList;
+    const items = visible.filter((r) => r.timestamp.slice(0, 10) === day);
+    if (!items.length) return focusFromList;
+    return {
+      id: `day-${day}`,
+      date: day,
+      receipts: items.slice(0, 40),
+      types: [...new Set(items.map((i) => i.type))],
+      total: items.length,
+    };
+  }, [day, focusFromList, visible]);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 md:px-8">
@@ -50,8 +63,11 @@ export default function Journey() {
         <section className="mt-10 rounded-3xl border border-white/[0.08] bg-[#0D0D12] p-6">
           <p className="text-[10px] uppercase tracking-[0.22em] text-mute">Moments around</p>
           <h2 className="mt-1 text-2xl font-bold tracking-tight">{formatDay(focus.date)}</h2>
-          <p className="text-sm text-mute">{focus.receipts.length} traces that share a calendar square</p>
-          <Constellation receipts={focus.receipts} onOpen={select} />
+          <p className="text-sm text-mute">
+            The dataset shows {focus.total.toLocaleString("en-IN")} records on this date
+            {focus.types.length > 1 ? `, across ${focus.types.map((t) => TYPE_LABEL[t]).join(", ")}` : ""}.
+          </p>
+          <Constellation receipts={focus.receipts.slice(0, 14)} onOpen={select} />
         </section>
       )}
 
@@ -59,7 +75,7 @@ export default function Journey() {
         {clusters.slice(0, 18).map((c) => (
           <div key={c.id} className="glass-card rounded-2xl p-4">
             <p className="text-xs uppercase tracking-[0.16em] text-mute">{formatDay(c.date)}</p>
-            <p className="mt-1 text-lg font-semibold">{c.receipts.length} connected traces</p>
+            <p className="mt-1 text-lg font-semibold">{c.total.toLocaleString("en-IN")} records this day</p>
             <p className="mt-1 text-sm text-mute">{c.types.map((t) => TYPE_LABEL[t]).join(" · ")}</p>
             <div className="mt-3 space-y-2">
               {c.receipts.slice(0, 3).map((r) => (

@@ -2,10 +2,10 @@ import { useMemo } from "react";
 import { create } from "zustand";
 import { detectChapters } from "./data/chapterEngine";
 import { detectConnections, otherId } from "./data/connectionEngine";
-import { loadBundle, normalizeBundle } from "./data/dataLoader";
+import { loadOfficialReceipts } from "./data/dataLoader";
 import type { Chapter, ConnectionEdge, Receipt, ReceiptType } from "./data/types";
-import { RECEIPT_TYPES } from "./data/types";
 import { searchReceipts } from "./utils/analyzeData";
+import { logDatasetReport } from "./utils/validateDataset";
 
 interface LifeState {
   ready: boolean;
@@ -13,6 +13,7 @@ interface LifeState {
   receipts: Receipt[];
   edges: ConnectionEdge[];
   chapters: Chapter[];
+  presentTypes: ReceiptType[];
   selectedId: string | null;
   query: string;
   activeTypes: ReceiptType[];
@@ -31,18 +32,20 @@ export const useLifeStore = create<LifeState>((set, get) => ({
   receipts: [],
   edges: [],
   chapters: [],
+  presentTypes: [],
   selectedId: null,
   query: "",
-  activeTypes: [...RECEIPT_TYPES],
+  activeTypes: [],
   toast: null,
 
   load: async () => {
     try {
-      const bundle = await loadBundle();
-      const receipts = normalizeBundle(bundle);
+      const receipts = await loadOfficialReceipts();
       const edges = detectConnections(receipts);
       const chapters = detectChapters(receipts);
-      set({ receipts, edges, chapters, ready: true, error: null });
+      const presentTypes = [...new Set(receipts.map((r) => r.type))];
+      logDatasetReport(receipts, { connections: edges.length, chapters: chapters.length, patternsNote: "computed in UI from receipts" });
+      set({ receipts, edges, chapters, presentTypes, activeTypes: presentTypes, ready: true, error: null });
     } catch (err) {
       set({ error: err instanceof Error ? err.message : "Failed to load archive", ready: false });
     }
@@ -50,13 +53,14 @@ export const useLifeStore = create<LifeState>((set, get) => ({
   select: (id) => set({ selectedId: id }),
   setQuery: (query) => set({ query }),
   toggleType: (t) => {
+    const present = get().presentTypes;
     const cur = get().activeTypes;
-    if (cur.length === RECEIPT_TYPES.length) {
+    if (cur.length === present.length) {
       set({ activeTypes: [t] });
       return;
     }
     const next = cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t];
-    set({ activeTypes: next.length ? next : [...RECEIPT_TYPES] });
+    set({ activeTypes: next.length ? next : present });
   },
   setTypes: (activeTypes) => set({ activeTypes }),
   setToast: (toast) => set({ toast }),
@@ -66,10 +70,12 @@ export function useVisibleReceipts(): Receipt[] {
   const receipts = useLifeStore((s) => s.receipts);
   const query = useLifeStore((s) => s.query);
   const types = useLifeStore((s) => s.activeTypes);
-  return useMemo(
-    () => receipts.filter((r) => types.includes(r.type)).filter((r) => (query ? searchReceipts(query, [r]).length > 0 : true)),
-    [receipts, query, types],
-  );
+  return useMemo(() => {
+    const typed = receipts.filter((r) => types.includes(r.type));
+    if (!query.trim()) return typed;
+    const found = new Set(searchReceipts(query, typed).map((r) => r.id));
+    return typed.filter((r) => found.has(r.id));
+  }, [receipts, query, types]);
 }
 
 export const useFilteredReceipts = useVisibleReceipts;

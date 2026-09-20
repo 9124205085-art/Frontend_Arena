@@ -1,75 +1,18 @@
 /**
- * connectionEngine.ts
+ * Connection discovery from actual records only.
+ * Every edge stores why two receipts are linked.
  *
- * This is the insight layer — not decoration. Every edge is a reason two
- * disconnected receipts belong to the same moment in a life.
+ * Rules (no random edges):
+ *  1. Temporal proximity (minutes/hours apart)
+ *  2. Same calendar day, different category/source
+ *  3. Same location
+ *  4. Same entity (artist, merchant, person)
+ *  5. Shared rare keywords from real fields
  *
- * Four detectors run over the full set, then we keep the strongest edges
- * so the vine-web in Explore mode stays readable:
- *
- *  a) TEMPORAL     — same calendar day, or within 3 / 7 days
- *  b) LOCATION     — shared place tokens (Place 0, Dadar, a city name…)
- *  c) TAG OVERLAP  — Jaccard similarity of tags / keywords
- *  d) EXPLICIT REF — a note/search/message naming another receipt's
- *                    distinctive title tokens (song, merchant, city, ritual)
- *
- * relatedIds on each receipt is filled from the surviving edges.
+ * Pairwise Jaccard across 160k rows is skipped on purpose.
  */
 
 import type { ConnectionEdge, ConnectionReason, Receipt } from "./types";
-
-const STOP = new Set([
-  "the",
-  "and",
-  "for",
-  "from",
-  "with",
-  "that",
-  "this",
-  "untitled",
-  "track",
-  "receipt",
-  "unknown",
-  "merchant",
-  "via",
-  "card",
-  "swipe",
-  "played",
-  "listen",
-  "hours",
-  "life",
-  "later",
-  "after",
-  "already",
-  "gone",
-  "quiet",
-  "small",
-  "amount",
-  "still",
-  "took",
-  "day",
-  "house",
-  "remembered",
-  "journey",
-  "ledger",
-  "tried",
-  "anonymize",
-  "subscription",
-  "stood",
-  "company",
-  "screen",
-  "billed",
-  "entertainment",
-  "body",
-  "trying",
-  "cart",
-  "closed",
-  "network",
-  "fare",
-  "toward",
-  "somewhere",
-  "unnamed",
-]);
 
 function dayStamp(iso: string): string {
   return iso.slice(0, 10);
@@ -79,43 +22,26 @@ function toTime(iso: string): number {
   return new Date(iso).getTime();
 }
 
-function daysBetween(a: string, b: string): number {
-  return Math.abs(toTime(a) - toTime(b)) / 86_400_000;
+function minutesBetween(a: string, b: string): number {
+  return Math.abs(toTime(a) - toTime(b)) / 60_000;
 }
 
 function locKey(receipt: Receipt): string | null {
   const loc = (receipt.location || "").toLowerCase().trim();
-  if (loc.length >= 3) return loc;
-  const hit = `${receipt.title} ${receipt.description}`.match(
-    /(permanent residence|current residence|place [0-9a-z]|dadar|sion|ltt|sevagram|amritsar|mumbai|decathlon)/i,
-  );
-  return hit ? hit[0].toLowerCase() : null;
+  return loc.length >= 3 ? loc : null;
 }
 
-function distinctiveTokens(receipt: Receipt): Set<string> {
-  const bag = new Set<string>();
-  const extra = Object.values(receipt.extra || {})
-    .map((v) => String(v))
-    .join(" ");
-  const text = `${receipt.title} ${receipt.tags.join(" ")} ${extra}`;
-  for (const raw of text.toLowerCase().split(/[^a-z0-9]+/)) {
-    if (raw.length < 4 || STOP.has(raw) || /^\d+$/.test(raw)) continue;
-    bag.add(raw);
-  }
-  return bag;
-}
-
-function jaccard(a: Set<string>, b: Set<string>): number {
-  if (!a.size || !b.size) return 0;
-  let inter = 0;
-  for (const x of a) if (b.has(x)) inter += 1;
-  return inter / (a.size + b.size - inter);
-}
-
-function overlapLabels(a: Set<string>, b: Set<string>): string[] {
-  const out: string[] = [];
-  for (const x of a) if (b.has(x)) out.push(x);
-  return out.slice(0, 5);
+function entityKey(receipt: Receipt): string | null {
+  const artist = String(receipt.extra?.artist || "").trim().toLowerCase();
+  if (artist.length >= 3) return `artist:${artist}`;
+  const person = String(receipt.extra?.person || "").trim().toLowerCase();
+  if (person.length >= 4) return `person:${person}`;
+  const merchant = String(receipt.extra?.merchant || receipt.title || "")
+    .replace(/^fraud_/i, "")
+    .trim()
+    .toLowerCase();
+  if (receipt.source === "india" && merchant.length >= 4) return `merchant:${merchant}`;
+  return null;
 }
 
 function pushEdge(
@@ -135,132 +61,138 @@ function pushEdge(
   }
 }
 
-const MAX_EDGES_PER_NODE = 6;
+const MAX_EDGES_PER_NODE = 8;
+const MAX_EDGES = 10_000;
 
 export function detectConnections(receipts: Receipt[]): ConnectionEdge[] {
   const byId = new Map(receipts.map((r) => [r.id, r]));
   const edges = new Map<string, ConnectionEdge>();
-  const tokens = new Map(receipts.map((r) => [r.id, distinctiveTokens(r)]));
-
-  // --- a) close timestamps ---
   const ordered = [...receipts].sort((x, y) => x.timestamp.localeCompare(y.timestamp));
+
+  // 1. Temporal proximity — look ahead until the gap exceeds 90 minutes.
   for (let i = 0; i < ordered.length; i++) {
-    for (let j = i + 1; j < ordered.length; j++) {
-      const gap = daysBetween(ordered[i].timestamp, ordered[j].timestamp);
-      if (gap > 7) break;
-      const same = dayStamp(ordered[i].timestamp) === dayStamp(ordered[j].timestamp);
-      if (same) {
-        pushEdge(
-          edges,
-          ordered[i].id,
-          ordered[j].id,
-          "same-day",
-          `Both landed on ${dayStamp(ordered[i].timestamp)}`,
-          3.4,
-        );
-      } else if (gap <= 3) {
-        pushEdge(
-          edges,
-          ordered[i].id,
-          ordered[j].id,
-          "same-week",
-          `Only ${gap.toFixed(1)} days apart`,
-          2.1,
-        );
-      } else {
-        pushEdge(
-          edges,
-          ordered[i].id,
-          ordered[j].id,
-          "same-week",
-          `The same week of a life`,
-          1.2,
-        );
-      }
+    let added = 0;
+    for (let j = i + 1; j < ordered.length && added < 3; j++) {
+      const mins = minutesBetween(ordered[i].timestamp, ordered[j].timestamp);
+      if (mins > 90) break;
+      if (mins > 45 && ordered[i].source === ordered[j].source && ordered[i].type === ordered[j].type) continue;
+      const label =
+        mins < 1
+          ? "These records occurred less than a minute apart."
+          : `These moments occurred ${Math.round(mins)} minutes apart.`;
+      pushEdge(edges, ordered[i].id, ordered[j].id, "temporal", label, mins <= 15 ? 4.2 : 3.1);
+      added += 1;
     }
   }
 
-  // --- b) same location ---
-  const locGroups = new Map<string, Receipt[]>();
+  // 2. Same day, mixed category/source — a real "moment" candidate.
+  const byDay = new Map<string, Receipt[]>();
   for (const r of receipts) {
-    const key = locKey(r);
-    if (!key) continue;
-    const list = locGroups.get(key) ?? [];
-    list.push(r);
-    locGroups.set(key, list);
+    const d = dayStamp(r.timestamp);
+    const list = byDay.get(d);
+    if (list) list.push(r);
+    else byDay.set(d, [r]);
   }
-  for (const [place, group] of locGroups) {
-    if (group.length < 2) continue;
-    for (let i = 0; i < group.length; i++) {
-      for (let j = i + 1; j < group.length; j++) {
-        pushEdge(
-          edges,
-          group[i].id,
-          group[j].id,
-          "same-location",
-          `Both belong to ${place}`,
-          2.8,
-        );
+  for (const [date, group] of byDay) {
+    const mixed: Receipt[] = [];
+    const seen = new Set<string>();
+    const sorted = [...group].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    for (const r of sorted) {
+      const key = `${r.type}:${r.source}`;
+      if (seen.has(key) && mixed.length >= 6) continue;
+      if (!seen.has(key)) {
+        seen.add(key);
+        mixed.push(r);
       }
     }
-  }
-
-  // --- c) overlapping tags / keywords ---
-  for (let i = 0; i < receipts.length; i++) {
-    for (let j = i + 1; j < receipts.length; j++) {
-      const A = tokens.get(receipts[i].id)!;
-      const B = tokens.get(receipts[j].id)!;
-      const sim = jaccard(A, B);
-      if (sim < 0.18) continue;
-      const shared = overlapLabels(A, B);
-      if (!shared.length) continue;
+    if (seen.size < 2) continue;
+    for (let i = 0; i < mixed.length - 1; i++) {
       pushEdge(
         edges,
-        receipts[i].id,
-        receipts[j].id,
-        "shared-tags",
-        `Shared ${shared.join(", ")}`,
-        1.4 + sim * 3,
+        mixed[i].id,
+        mixed[i + 1].id,
+        "same-day",
+        `The dataset shows both on ${date}, across ${mixed[i].type} and ${mixed[i + 1].type}.`,
+        3.6,
       );
     }
   }
 
-  // --- d) explicit references in prose ---
-  // A note that says "Sevagram" should lock onto the train receipt titled with it.
-  for (const source of receipts) {
-    if (!["note", "message", "search", "photo", "event"].includes(source.type)) continue;
-    const hay = `${source.title} ${source.description} ${(source.extra?.mentions as string) || ""}`.toLowerCase();
-    for (const target of receipts) {
-      if (target.id === source.id) continue;
-      const needles = [
-        target.title,
-        String(target.extra?.artist || ""),
-        String(target.extra?.merchant || ""),
-        target.location || "",
-      ]
-        .map((s) => s.trim())
-        .filter((s) => s.length >= 4);
-
-      for (const needle of needles) {
-        const n = needle.toLowerCase();
-        if (n.length < 4 || STOP.has(n)) continue;
-        if (hay.includes(n)) {
-          pushEdge(
-            edges,
-            source.id,
-            target.id,
-            "explicit-mention",
-            `“${source.title}” names ${needle}`,
-            4.2,
-          );
-          break;
-        }
-      }
+  // 3. Same location — sequential in time, capped.
+  const locGroups = new Map<string, Receipt[]>();
+  for (const r of receipts) {
+    const key = locKey(r);
+    if (!key) continue;
+    const list = locGroups.get(key);
+    if (list) list.push(r);
+    else locGroups.set(key, [r]);
+  }
+  for (const [place, group] of locGroups) {
+    if (group.length < 2) continue;
+    const seq = [...group].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    let added = 0;
+    for (let i = 0; i < seq.length - 1 && added < 48; i++) {
+      pushEdge(
+        edges,
+        seq[i].id,
+        seq[i + 1].id,
+        "same-location",
+        `Both moments occurred at ${place}.`,
+        2.8,
+      );
+      added += 1;
     }
   }
 
-  // Keep the strongest vines per leaf so Explore mode does not become a thicket.
-  const ranked = [...edges.values()].sort((a, b) => b.weight - a.weight);
+  // 4. Same entity (artist / person / merchant) — nearby in time only.
+  const entGroups = new Map<string, Receipt[]>();
+  for (const r of receipts) {
+    const key = entityKey(r);
+    if (!key) continue;
+    const list = entGroups.get(key);
+    if (list) list.push(r);
+    else entGroups.set(key, [r]);
+  }
+  for (const [key, group] of entGroups) {
+    if (group.length < 2) continue;
+    const label = key.slice(key.indexOf(":") + 1);
+    const seq = [...group].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    let added = 0;
+    for (let i = 0; i < seq.length - 1 && added < 36; i++) {
+      const mins = minutesBetween(seq[i].timestamp, seq[i + 1].timestamp);
+      if (mins > 48 * 60) continue;
+      pushEdge(
+        edges,
+        seq[i].id,
+        seq[i + 1].id,
+        "same-entity",
+        `Repeated entity in the dataset: ${label}.`,
+        2.4,
+      );
+      added += 1;
+    }
+  }
+
+  // 5. Rare shared keywords from real tags (not generic "music").
+  const invert = new Map<string, string[]>();
+  for (const r of receipts) {
+    for (const tag of r.tags) {
+      if (tag.length < 4) continue;
+      if (tag === "music" || tag === "purchase" || tag === "place" || tag === "movie" || tag === "event") continue;
+      const list = invert.get(tag);
+      if (list) {
+        if (list.length < 60) list.push(r.id);
+      } else invert.set(tag, [r.id]);
+    }
+  }
+  for (const [tag, ids] of invert) {
+    if (ids.length < 2 || ids.length > 40) continue;
+    for (let i = 0; i < ids.length - 1; i++) {
+      pushEdge(edges, ids[i], ids[i + 1], "shared-tags", `Shared keyword from the records: ${tag}.`, 1.6);
+    }
+  }
+
+  const ranked = [...edges.values()].sort((a, b) => b.weight - a.weight).slice(0, MAX_EDGES);
   const used = new Map<string, number>();
   const kept: ConnectionEdge[] = [];
   for (const edge of ranked) {
@@ -280,6 +212,10 @@ export function detectConnections(receipts: Receipt[]): ConnectionEdge[] {
   }
 
   return kept;
+}
+
+export function getConnectionReason(edge: ConnectionEdge): string {
+  return edge.detail;
 }
 
 export function edgesFor(id: string, edges: ConnectionEdge[]): ConnectionEdge[] {

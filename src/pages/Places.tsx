@@ -15,7 +15,7 @@ export default function Places() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 md:px-8">
       <PageIntro kicker="Geography of a life" title="Places">
-        {locs.length} locations · {visits} visits — an abstract constellation, not a fake map.
+        {locs.length.toLocaleString("en-IN")} locations · {visits.toLocaleString("en-IN")} located records from the household notes and India city/state fields.
       </PageIntro>
 
       {locs.length === 0 ? (

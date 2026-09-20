@@ -13,7 +13,7 @@ export default function Patterns() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 md:px-8">
       <PageIntro kicker="Discovery" title="Patterns we found">
-        The data reveals things you may not have noticed.
+        Each card is counted from the official records. If the data does not support a claim, it is not shown.
       </PageIntro>
 
       <div className="mt-8 overflow-x-auto rounded-3xl border border-white/[0.08] bg-[#0D0D12] p-5">

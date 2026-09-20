@@ -19,14 +19,21 @@ export default function Overview() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 md:px-8">
       <PageIntro kicker="Archive" title="Your digital life">
-        {stats.total} moments. {stats.categories} categories. Countless connections.
+        {stats.total.toLocaleString("en-IN")} records. {stats.categories} categories found in the data.{" "}
+        {stats.activeDays.toLocaleString("en-IN")} active days.
       </PageIntro>
 
-      <div className="mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi label="Total moments" value={stats.total} hint="Every receipt in the archive" numeric />
-        <Kpi label="Active days" value={stats.activeDays} hint="Days that left a trace" numeric />
-        <Kpi label="Places visited" value={stats.places} hint="Named locations in the data" numeric />
-        <Kpi label="Most active time" value={formatHour(stats.peakHour)} hint={`${stats.peakCount} receipts in that hour`} />
+      <div className="mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Kpi label="Total moments" value={stats.total} hint="Every official record that parsed a timestamp" numeric />
+        <Kpi label="Categories" value={stats.categories} hint="Normalized types present in this archive" numeric />
+        <Kpi label="Active days" value={stats.activeDays} hint="Distinct calendar days in the timestamps" numeric />
+        <Kpi label="Places" value={stats.places} hint="Distinct location strings found on records" numeric />
+        <Kpi
+          label="Most active time"
+          value={formatHour(stats.peakHour)}
+          hint={`${stats.peakCount.toLocaleString("en-IN")} records in that hour`}
+        />
+        <Kpi label="Most common category" value={stats.topCategory} hint="Highest count after normalization" />
       </div>
 
       <section className="mt-14">

@@ -51,9 +51,9 @@ export default function Landing() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.45, duration: 0.7 }}
-          className="mt-7 max-w-md text-lg leading-relaxed text-mute"
+          className="mt-7 max-w-lg text-lg leading-relaxed text-mute"
         >
-          Hundreds of moments.
+          {stats.total.toLocaleString("en-IN")} records from the provided archives.
           <br />
           One story waiting to be discovered.
         </motion.p>

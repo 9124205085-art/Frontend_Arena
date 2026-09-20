@@ -39,8 +39,8 @@ export default function App() {
           <span className="animate-core absolute inset-0 rounded-full bg-accent/40 blur-xl" />
           <span className="absolute inset-4 rounded-full bg-accent shadow-glow" />
         </div>
-        <p className="text-[10px] uppercase tracking-[0.32em] text-accent">Opening the archive</p>
-        <p className="mt-4 text-2xl font-bold tracking-tight">Gathering a life…</p>
+        <p className="text-[10px] uppercase tracking-[0.32em] text-accent">Reading official archives</p>
+        <p className="mt-4 text-2xl font-bold tracking-tight">Household, Spotify, India…</p>
       </div>
     );
   }

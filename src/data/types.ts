@@ -12,7 +12,7 @@ export const RECEIPT_TYPES = [
 
 export type ReceiptType = (typeof RECEIPT_TYPES)[number];
 
-export type ReceiptSource = "household" | "spotify" | "india" | "derived";
+export type ReceiptSource = "household" | "spotify" | "india";
 
 export interface Receipt {
   id: string;
@@ -31,10 +31,12 @@ export interface Receipt {
 }
 
 export type ConnectionReason =
+  | "temporal"
   | "same-day"
   | "same-week"
   | "same-location"
   | "shared-tags"
+  | "same-entity"
   | "explicit-mention";
 
 export interface ConnectionEdge {
@@ -95,6 +97,8 @@ export interface IndiaRow {
   state: string;
   job?: string;
   is_fraud?: string;
+  first?: string;
+  last?: string;
 }
 
 export interface DerivedRow {

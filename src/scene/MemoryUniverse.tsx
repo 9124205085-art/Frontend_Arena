@@ -22,6 +22,24 @@ const GROUND_POS: [number, number, number] = [0, -2.55, 0];
 const GROUND_ARGS: [number, number] = [4.8, 48];
 const LOOK = new THREE.Vector3(0, 0.12, 0);
 
+function takeStride(list: Receipt[], n: number): Receipt[] {
+  if (n <= 0 || list.length === 0) return [];
+  if (list.length <= n) return list;
+  const step = list.length / n;
+  const out: Receipt[] = [];
+  for (let i = 0; i < n; i++) out.push(list[Math.floor(i * step)]!);
+  return out;
+}
+
+function visualSample(receipts: Receipt[], n: number): Receipt[] {
+  const buckets: Record<Receipt["source"], Receipt[]> = { household: [], spotify: [], india: [] };
+  for (const r of receipts) buckets[r.source].push(r);
+  const sp = Math.min(buckets.spotify.length, Math.floor(n * 0.5));
+  const hh = Math.min(buckets.household.length, Math.floor(n * 0.25));
+  const ind = Math.min(buckets.india.length, n - sp - hh);
+  return [...takeStride(buckets.spotify, sp), ...takeStride(buckets.household, hh), ...takeStride(buckets.india, ind)];
+}
+
 function fragmentOrbit(id: string) {
   const rng = mulberry32(hashId(id));
   const radius = 2.05 + rng() * 4.4;
@@ -166,7 +184,7 @@ function Fragments({
 }) {
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const pack = useMemo(() => {
-    const sample = receipts.slice(0, mobile ? 36 : 92);
+    const sample = visualSample(receipts, mobile ? 36 : 92);
     const items = sample.map((r) => ({ id: r.id, type: r.type, ...fragmentOrbit(r.id) }));
     const geo = new THREE.BoxGeometry(0.1, 0.14, 0.016);
     const mat = new THREE.MeshStandardMaterial({
@@ -215,7 +233,7 @@ function Fragments({
 function Threads({ receipts, edges }: { receipts: Receipt[]; edges: ConnectionEdge[] }) {
   const line = useMemo(() => {
     const byId = new Map<string, THREE.Vector3>();
-    receipts.slice(0, 92).forEach((r) => {
+    visualSample(receipts, 92).forEach((r) => {
       const p = fragmentOrbit(r.id);
       byId.set(r.id, new THREE.Vector3(p.x, p.y, p.z));
     });

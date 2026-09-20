@@ -13,10 +13,17 @@ export default function Connections() {
   const select = useLifeStore((s) => s.select);
   const [hoverId, setHoverId] = useState<string | null>(null);
 
-  const nodes = useMemo(
-    () => receipts.filter((r) => types.includes(r.type)).slice(0, 72),
-    [receipts, types],
-  );
+  const nodes = useMemo(() => {
+    const degree = new Map<string, number>();
+    for (const e of edges) {
+      degree.set(e.a, (degree.get(e.a) ?? 0) + 1);
+      degree.set(e.b, (degree.get(e.b) ?? 0) + 1);
+    }
+    return receipts
+      .filter((r) => types.includes(r.type) && (degree.get(r.id) ?? 0) > 0)
+      .sort((a, b) => (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0))
+      .slice(0, 72);
+  }, [receipts, types, edges]);
   const ids = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes]);
   const visEdges = useMemo(
     () => edges.filter((e) => ids.has(e.a) && ids.has(e.b)).slice(0, 90),
@@ -43,7 +50,7 @@ export default function Connections() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 md:px-8">
       <PageIntro kicker="The important page" title="Connections">
-        Some moments only make sense when you see them together.
+        Edges are discovered from the records: time, place, entity, and shared keywords. Nothing is random.
       </PageIntro>
       <div className="mt-7">
         <FilterChips />
