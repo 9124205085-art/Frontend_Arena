@@ -1,5 +1,4 @@
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, beforeEach } from "vitest";
 import FilterChips from "./FilterChips";
 import { useLifeStore } from "../store";
@@ -12,11 +11,10 @@ describe("FilterChips", () => {
     });
   });
 
-  it("has an accessible name and filters to one category", async () => {
-    const user = userEvent.setup();
+  it("has an accessible name and filters to one category", () => {
     render(<FilterChips />);
     expect(screen.getByRole("group", { name: "Filter by category" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /music/i }));
+    fireEvent.click(screen.getByRole("button", { name: /music/i }));
     expect(useLifeStore.getState().activeTypes).toEqual(["music"]);
   });
 });

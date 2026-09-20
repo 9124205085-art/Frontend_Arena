@@ -1,6 +1,9 @@
 import { TYPE_COLOR, TYPE_ICON, TYPE_LABEL } from "../utils/constants";
 import { useLifeStore } from "../store";
 
+const chip =
+  "inline-flex min-h-11 shrink-0 items-center rounded-full border px-3.5 text-[11px] font-semibold uppercase tracking-[0.14em] transition";
+
 export default function FilterChips() {
   const active = useLifeStore((s) => s.activeTypes);
   const present = useLifeStore((s) => s.presentTypes);
@@ -9,14 +12,12 @@ export default function FilterChips() {
   const allOn = present.length > 0 && active.length === present.length;
 
   return (
-    <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filter by category">
+    <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label="Filter by category">
       <button
         type="button"
         onClick={() => setTypes([...present])}
         aria-pressed={allOn}
-        className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] transition ${
-          allOn ? "border-accent bg-accent/20 text-white" : "border-white/[0.08] text-mute hover:text-white"
-        }`}
+        className={`${chip} ${allOn ? "border-accent bg-accent/20 text-white" : "border-white/[0.08] text-mute hover:text-white"}`}
       >
         All
       </button>
@@ -28,14 +29,17 @@ export default function FilterChips() {
             type="button"
             onClick={() => toggle(t)}
             aria-pressed={on || allOn}
-            className="shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition hover:brightness-125"
+            className={`${chip} hover:brightness-125`}
             style={{
               borderColor: on || allOn ? TYPE_COLOR[t] : "rgba(255,255,255,0.08)",
               color: on || allOn ? TYPE_COLOR[t] : "#9696A5",
               background: on ? `${TYPE_COLOR[t]}18` : "transparent",
             }}
           >
-            <span aria-hidden>{TYPE_ICON[t]}</span> {TYPE_LABEL[t]}
+            <span aria-hidden className="mr-1">
+              {TYPE_ICON[t]}
+            </span>{" "}
+            {TYPE_LABEL[t]}
           </button>
         );
       })}

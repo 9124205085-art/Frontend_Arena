@@ -1,26 +1,15 @@
 import { useNavigate } from "react-router-dom";
 import { useLifeStore } from "../store";
-import { getPatternTraceIds } from "../utils/analyzeData";
-import { startChapterNarration, startPatternNarration } from "../utils/narration";
+import { applyPatternTrace, startChapterNarration, startPatternNarration } from "../hooks/storyPlayback";
 
 export default function Discoveries() {
   const navigate = useNavigate();
-  const receipts = useLifeStore((s) => s.receipts);
   const chapters = useLifeStore((s) => s.chapters);
   const patterns = useLifeStore((s) => s.patterns);
   const applyTrace = useLifeStore((s) => s.applyTrace);
-  const setHourLens = useLifeStore((s) => s.setHourLens);
-  const setNetworkMode = useLifeStore((s) => s.setNetworkMode);
 
   function tracePattern(id: string) {
-    if (id === "explorer") {
-      setNetworkMode("places");
-      navigate("/network");
-      return;
-    }
-    if (id === "night-owl") setHourLens("night");
-    if (id === "rituals") setHourLens("evening");
-    applyTrace(getPatternTraceIds(receipts, id));
+    applyPatternTrace(id);
     navigate("/network");
   }
 
@@ -30,9 +19,9 @@ export default function Discoveries() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 md:px-8">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-accent">Discoveries</p>
-      <h1 className="mt-2 text-4xl font-extrabold tracking-tight">Patterns we can trace</h1>
+    <div className="mx-auto max-w-5xl px-3 py-6 sm:px-4 sm:py-8 md:px-8">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-accent sm:tracking-[0.32em]">Discoveries</p>
+      <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">Patterns we can trace</h1>
       <p className="mt-2 text-mute">Counted from the official records. Trace them on the network, or hear the archive explain them.</p>
       <div className="mt-8 grid gap-4 md:grid-cols-2">
         {patterns.map((p) => (
@@ -45,14 +34,14 @@ export default function Discoveries() {
               <button
                 type="button"
                 onClick={() => tracePattern(p.id)}
-                className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white"
+                className="min-h-11 rounded-full bg-white/10 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-white"
               >
                 {p.action}
               </button>
               <button
                 type="button"
                 onClick={() => explainPattern(p.id)}
-                className="rounded-full border border-accent/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent"
+                className="min-h-11 rounded-full border border-accent/40 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent"
               >
                 🔊 Explain this
               </button>
@@ -82,7 +71,7 @@ export default function Discoveries() {
                       applyTrace(ch.receiptIds);
                       navigate("/network");
                     }}
-                    className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white"
+                    className="min-h-11 rounded-full bg-white/10 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-white"
                   >
                     Show on network
                   </button>
@@ -92,7 +81,7 @@ export default function Discoveries() {
                       startChapterNarration(ch);
                       navigate("/network");
                     }}
-                    className="rounded-full border border-accent/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent"
+                    className="min-h-11 rounded-full border border-accent/40 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent"
                   >
                     🔊 Tell this chapter
                   </button>

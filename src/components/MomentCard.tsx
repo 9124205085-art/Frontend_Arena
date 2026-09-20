@@ -19,7 +19,7 @@ export default function MomentCard({
       type="button"
       onClick={onOpen}
       onMouseMove={(e) => {
-        if (reduced) return;
+        if (reduced || window.matchMedia("(pointer: coarse)").matches) return;
         const el = e.currentTarget;
         const r = el.getBoundingClientRect();
         const px = (e.clientX - r.left) / r.width - 0.5;
@@ -29,7 +29,7 @@ export default function MomentCard({
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = "";
       }}
-      className="glow-border glass-card group w-full rounded-2xl p-4 text-left transition-[transform,box-shadow] duration-300 will-change-transform"
+      className="glow-border glass-card group min-h-11 w-full rounded-2xl p-4 text-left transition-[transform,box-shadow] duration-300 will-change-transform"
     >
       <span
         className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink"

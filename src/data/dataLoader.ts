@@ -5,17 +5,17 @@
 
 import { OFFICIAL_SOURCES } from "./sources";
 import type { Chapter, ConnectionEdge, Receipt, ReceiptType } from "./types";
-import type { Pattern } from "../utils/analyzeData";
+import type { Pattern } from "../domain/insights";
 
 export type ArchiveBundle = {
   receipts: Receipt[];
   edges: ConnectionEdge[];
   chapters: Chapter[];
   presentTypes: ReceiptType[];
-  overview: ReturnType<typeof import("../utils/analyzeData").getOverview>;
+  overview: ReturnType<typeof import("../domain/insights").getOverview>;
   patterns: Pattern[];
   years: number[];
-  locationStats: ReturnType<typeof import("../utils/analyzeData").getLocationStats>;
+  locationStats: ReturnType<typeof import("../domain/insights").getLocationStats>;
 };
 
 async function fetchText(url: string, label: string): Promise<string> {

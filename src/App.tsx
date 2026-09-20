@@ -40,10 +40,10 @@ function ArchiveGate() {
 
   if (error) {
     return (
-      <div className="grain flex min-h-svh items-center justify-center bg-ink px-6 text-center">
+      <div className="grain flex min-h-svh items-center justify-center bg-ink px-6 text-center" role="alert">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-accent">Archive unavailable</p>
-          <p className="mt-4 max-w-md text-xl text-mute">{error}</p>
+          <h1 className="mt-4 max-w-md text-xl font-bold text-mute">{error}</h1>
           <button
             type="button"
             onClick={() => void load()}

@@ -10,9 +10,9 @@ export default function Journey() {
   }, [setNetworkMode]);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 md:px-8">
+    <div className="mx-auto max-w-6xl px-3 py-6 sm:px-4 sm:py-8 md:px-8">
       <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-accent">Journey</p>
-      <h1 className="mt-2 text-4xl font-extrabold tracking-tight">Move through time</h1>
+      <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">Move through time</h1>
       <p className="mt-2 max-w-2xl text-mute">
         The network itself is the timeline. Pick a year. Click a moment. Follow the story — you never leave this map.
       </p>

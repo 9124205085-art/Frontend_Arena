@@ -73,7 +73,7 @@ Interactive Memory Network (sampled connected subgraph)
 Story panel → Follow the story / Tell the story
 ```
 
-Load path: `store.load` → `loadOfficialArchive` → worker `buildArchiveBundle` (or main-thread fallback) → UI.
+Load path: `lifeStore.load` → `loadOfficialArchive` → worker `buildArchiveBundle` (or main-thread fallback) → UI.
 
 ---
 
@@ -122,35 +122,39 @@ The type union also lists `same-week` and `explicit-mention`; **those reasons ar
 
 ## 7. Architecture
 
+Layers stay one-way: **pages → components/hooks → domain/lib → data**. UI does not run dataset analysis inside JSX. Domain modules do not import the store or React.
+
 ```mermaid
 flowchart TD
     CSV[Official CSV archives]
     Fetch[Vite asset URLs + fetch]
     Worker[archive.worker / main-thread fallback]
-    Norm[csv parse + normalize + validate]
-    Rel[detectConnections]
-    Ch[detectChapters]
-    Ins[getOverview / getPatterns]
-    Store[Zustand LifeStore]
-    Net[Memory Network - React Flow]
-    Panel[Story panel]
-    Voice[Web Speech narration]
-    Search[Search + filters]
-    Land[Landing MemoryUniverse / fallback]
+    Data[data: csv + normalize + detectConnections + chapters]
+    Domain[domain: insights / search / graph / narration copy / story]
+    Store[state/lifeStore]
+    UI[pages + network UI]
+    Voice[hooks/storyPlayback + Web Speech]
 
-    CSV --> Fetch --> Worker --> Norm
-    Norm --> Rel
-    Norm --> Ch
-    Norm --> Ins
-    Rel --> Store
-    Ch --> Store
-    Ins --> Store
-    Store --> Net
-    Store --> Search
-    Store --> Land
-    Net --> Panel
-    Panel --> Voice
+    CSV --> Fetch --> Worker --> Data
+    Data --> Domain
+    Domain --> Store
+    Store --> UI
+    UI --> Voice
 ```
+
+| Concern | Module |
+| --- | --- |
+| Data normalization | `src/data/normalize.ts` |
+| Relationship calculation | `src/data/connectionEngine.ts` (re-exported from `src/domain/relationships.ts`) |
+| Insight generation | `src/domain/insights.ts` |
+| Search | `src/domain/search.ts` |
+| Graph sample + layout | `src/domain/graph.ts` + `src/hooks/useGraphModel.ts` |
+| Narration copy | `src/domain/narration.ts` |
+| Narration playback | `src/hooks/storyPlayback.ts` + `src/hooks/useNarration.ts` |
+| Story copy / sequences | `src/domain/story.ts` |
+| App state | `src/state/lifeStore.ts` (`src/store.ts` re-exports) |
+
+`src/utils/analyzeData.ts`, `networkGraph.ts`, and `narration.ts` are thin re-exports so existing tests keep the same import paths.
 
 UI routes: `/` landing, `/overview` home + network, `/journey` time mode, `/network` network, `/discoveries` patterns + chapters, `/search`, `/moment/:id`. Legacy `/connections`, `/patterns`, `/places`, `/chapters` redirect.
 
@@ -189,15 +193,17 @@ FrontEnd_Arena/
 ├── public/
 ├── src/
 │   ├── App.tsx
-│   ├── store.ts
-│   ├── components/           # network, narration dock, UI, ErrorBoundary
+│   ├── store.ts              # re-export of state/lifeStore
+│   ├── state/                # Zustand LifeStore
+│   ├── domain/               # insights, search, graph, narration copy, story
+│   ├── components/           # network canvas/filters, narration dock, UI
 │   ├── data/                 # csv, normalize, connections, chapters, worker
-│   ├── hooks/                # narration, mobile, reduced motion
+│   ├── hooks/                # graph model, story playback, narration engine
 │   ├── layouts/              # AppShell, Header, Sidebar
 │   ├── lib/                  # sanitize, validateReceipt
-│   ├── pages/                # Landing, Overview, Journey, Network, Discoveries, Search, Moment
+│   ├── pages/
 │   ├── scene/                # MemoryUniverse (landing 3D)
-│   ├── utils/                # insights, graph sample, narration copy, format
+│   ├── utils/                # format, constants, thin re-exports
 │   └── test/                 # Vitest setup
 ├── vercel.json
 ├── vite.config.ts
@@ -252,8 +258,12 @@ Current suites (under `src/**/*.test.ts(x)`):
 | `lib/sanitize.test.ts` | Control chars; `javascript:` URLs rejected |
 | `lib/validateReceipt.test.ts` | Malformed records; duplicate ids |
 | `hooks/useNarration.test.ts` | Pause/resume/stop; no autoplay |
+| `hooks/useFocusTrap.test.tsx` | Dialog Tab cycle, Escape, focus restore |
 | `components/FilterChips.test.tsx` | Accessible name; category filter |
 | `components/ErrorBoundary.test.tsx` | Recovery actions instead of a blank screen |
+| `components/network/ConnectedMomentsList.test.tsx` | Graph keyboard listbox; arrows / Enter / Space |
+| `components/network/StoryPanel.test.tsx` | Dialog name; Escape closes |
+| `pages/Search.test.tsx` | Combobox name; arrows; Escape clears |
 
 These tests use small fixtures. They do not download the full production CSVs.
 
@@ -267,16 +277,16 @@ Implemented (not a WCAG audit certificate):
 - Buttons for interactive controls (stats, discoveries, filters, narration)
 - `:focus-visible` outline in `src/index.css`
 - Header search labelled; `/` focuses it when not typing in another field
-- Story panel: `role="dialog"`, `aria-modal`, labelled heading, Escape closes
+- Story panel: `role="dialog"`, `aria-modal`, labelled heading, **focus trap**, Escape closes, focus restored
 - Toasts: `role="status"` `aria-live="polite"`
-- Loading archive: `role="status"`
+- Loading archive: `role="status"`; archive errors use `role="alert"`
 - Filter chips: `role="group"` + `aria-pressed`
-- Memory Network: visible list of up to 20 moments in the current sample (keyboard alternative to the canvas)
-- Search combobox pattern with `aria-activedescendant` and arrow-key movement
-- `prefers-reduced-motion`: landing skips R3F; CSS disables dust / core pulse
-- Color is not the only cue: type icons + labels sit on nodes and list rows
+- Memory Network: **keyboard listbox** of connected moments (or places in Places mode). Arrow / Home / End move; Enter or Space selects. Canvas nodes are not in the tab order.
+- Search combobox: `aria-activedescendant`, arrows, Enter opens, Escape clears
+- `prefers-reduced-motion`: landing skips R3F; CSS disables dust / core pulse; graph fit-view duration is 0; follow-story wait is 0
+- Color is not the only cue: type icons + labels sit on list rows, chips, and story details
 
-Gaps that remain: no full screen-reader QA pass, no jsx-a11y ESLint plugin (peer conflict with current ESLint), graph canvas itself is pointing-device oriented.
+Accessibility-oriented tests: `useFocusTrap.test.tsx`, `ConnectedMomentsList.test.tsx`, `StoryPanel.test.tsx`, `pages/Search.test.tsx`, plus FilterChips / ErrorBoundary.
 
 ---
 
@@ -318,11 +328,12 @@ Frontend-only practices in this repo:
 
 | Viewport | Behavior |
 | --- | --- |
-| `md` and up | Left sidebar, header search, full narration dock label |
-| Below `md` | Bottom nav (Home / Journey / Network / Discover), story panel above the nav, compact 🔊 control |
-| Mobile / reduced motion | No landing WebGL; 2D fallback; smaller graph sample; fewer 3D particles if the scene does run |
+| 320–767px | Bottom nav with Home, Journey, Network, Discover, **Search**. Header search stays. Story details open as a **bottom sheet**. Filters collapse into a compact panel with year/month selects. Graph is shorter, pinch-zoom, 44px controls. Voice pause/stop sits above the nav while speaking. |
+| 768–1023px | Left sidebar appears; bottom nav hides. Story remains a bottom sheet so it does not cover the graph. Compact filters stay until 1024px. |
+| 1024px and up | Side story card, full year/month chip rails, wider graph, narration dock at the lower left. |
+| 1280–1920px | Same desktop model; content max-width keeps the museum layout from stretching. |
 
-Year/month chips scroll horizontally. Network height is `min(68vh, 640px)`.
+Touch targets are at least 44px where users tap. `viewport-fit=cover` and safe-area padding keep the home indicator from covering nav. Horizontal overflow is clipped; year/month/category rows scroll inside themselves on desktop. Reduced motion skips landing 3D, page-slide, and sheet motion beyond a fade.
 
 ---
 

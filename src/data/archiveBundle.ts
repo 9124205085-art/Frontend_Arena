@@ -4,7 +4,7 @@ import { detectConnections } from "./connectionEngine";
 import { detectChapters } from "./chapterEngine";
 import type { HouseholdRow, IndiaRow, Receipt, SpotifyRow } from "./types";
 import { dedupeReceipts } from "../lib/validateReceipt";
-import { getLocationStats, getOverview, getPatterns, getYears } from "../utils/analyzeData";
+import { getLocationStats, getOverview, getPatterns, getYears } from "../domain/insights";
 
 export function receiptsFromCsvTexts(householdText: string, spotifyText: string, indiaText: string): Receipt[] {
   const receipts: Receipt[] = [];
@@ -30,7 +30,8 @@ export function receiptsFromCsvTexts(householdText: string, spotifyText: string,
 /**
  * Parse the three official CSV texts into receipts, then compute connections,
  * chapters, overview stats, and discovery patterns in one pass.
- * Used by the archive Web Worker (and the main-thread fallback).
+ * Pipeline used by the archive Web Worker (and the main-thread fallback).
+ * Parse/normalize/connect live in `data/`; overview and patterns come from `domain/insights`.
  */
 export function buildArchiveBundle(householdText: string, spotifyText: string, indiaText: string) {
   const receipts = receiptsFromCsvTexts(householdText, spotifyText, indiaText);

@@ -1,302 +1,85 @@
-import { useCallback, useEffect, useMemo } from "react";
-import {
-  Background,
-  Controls,
-  ReactFlow,
-  ReactFlowProvider,
-  useReactFlow,
-  type Edge,
-  type Node,
-} from "@xyflow/react";
-import "@xyflow/react/dist/style.css";
-import { neighborIds, useLifeStore } from "../../store";
-import { formatDay } from "../../utils/format";
-import { layoutMoments, layoutPlaces, pickGraphReceipts, placeCooccurrence } from "../../utils/networkGraph";
+import { useLifeStore } from "../../store";
 import { TYPE_ICON, TYPE_LABEL } from "../../utils/constants";
-import type { ConnectionEdge } from "../../data/types";
-import FilterChips from "../FilterChips";
-import { MomentNode } from "./MomentNode";
-import { PlaceNode } from "./PlaceNode";
-import { MemoryEdge } from "./MemoryEdge";
-import { useIsMobile } from "../../hooks/useIsMobile";
-import { usePrefersReducedMotion } from "../../hooks/usePrefersReducedMotion";
-
-const nodeTypes = { moment: MomentNode, place: PlaceNode };
-const edgeTypes = { memory: MemoryEdge };
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-function NetworkCanvas({
-  graph,
-  rfNodes,
-  rfEdges,
-}: {
-  graph: ReturnType<typeof pickGraphReceipts>;
-  rfNodes: Node[];
-  rfEdges: Edge[];
-}) {
-  const selectedId = useLifeStore((s) => s.selectedId);
-  const select = useLifeStore((s) => s.select);
-  const selectEdge = useLifeStore((s) => s.selectEdge);
-  const selectPlace = useLifeStore((s) => s.selectPlace);
-  const mode = useLifeStore((s) => s.networkMode);
-  const year = useLifeStore((s) => s.year);
-  const month = useLifeStore((s) => s.month);
-  const hourLens = useLifeStore((s) => s.hourLens);
-  const locationLens = useLifeStore((s) => s.locationLens);
-  const traceIds = useLifeStore((s) => s.traceIds);
-  const types = useLifeStore((s) => s.activeTypes);
-  const { fitView } = useReactFlow();
-
-  useEffect(() => {
-    if (useLifeStore.getState().selectedId) return;
-    const t = window.setTimeout(() => {
-      void fitView({ duration: 380, padding: 0.28 });
-    }, 60);
-    return () => window.clearTimeout(t);
-  }, [mode, year, month, hourLens, locationLens, types, traceIds, fitView]);
-
-  useEffect(() => {
-    if (!selectedId || mode === "places") return;
-    const t = window.setTimeout(() => {
-      const neigh = neighborIds(selectedId).slice(0, 8).map((id) => ({ id }));
-      void fitView({
-        nodes: [{ id: selectedId }, ...neigh],
-        duration: 520,
-        padding: 1.15,
-        maxZoom: 1.35,
-      });
-    }, 40);
-    return () => window.clearTimeout(t);
-  }, [selectedId, fitView, mode]);
-
-  const onNodeClick = useCallback(
-    (_: unknown, node: Node) => {
-      if (node.type === "place") {
-        const loc = String((node.data as { location?: string }).location || "");
-        selectPlace(loc);
-        return;
-      }
-      select(node.id);
-    },
-    [select, selectPlace],
-  );
-
-  const onEdgeClick = useCallback(
-    (_: unknown, edge: Edge) => {
-      if (mode === "places") {
-        const detail = String((edge.data as { detail?: string } | undefined)?.detail || "These locations appear on the same day in the archive.");
-        const rec: ConnectionEdge = {
-          a: String(edge.source).replace("place::", ""),
-          b: String(edge.target).replace("place::", ""),
-          reason: "same-day",
-          detail,
-          weight: 1,
-        };
-        selectEdge(rec);
-        return;
-      }
-      const rec = graph.visEdges.find((e) => `${e.a}|${e.b}|${e.reason}` === edge.id);
-      if (rec) {
-        selectEdge(rec);
-        select(rec.a);
-      }
-    },
-    [graph.visEdges, select, selectEdge, mode],
-  );
-
-  const onPaneClick = useCallback(() => {
-    select(null);
-    selectEdge(null);
-    selectPlace(null);
-  }, [select, selectEdge, selectPlace]);
-
-  const onNodeDoubleClick = useCallback(
-    (_: unknown, node: Node) => {
-      const ids = node.type === "place" ? [node.id] : [node.id, ...neighborIds(node.id)];
-      void fitView({ nodes: ids.slice(0, 10).map((id) => ({ id })), duration: 450, padding: 0.7, maxZoom: 1.55 });
-    },
-    [fitView],
-  );
-
-  return (
-    <ReactFlow
-      nodes={rfNodes}
-      edges={rfEdges}
-      nodeTypes={nodeTypes}
-      edgeTypes={edgeTypes}
-      onNodeClick={onNodeClick}
-      onEdgeClick={onEdgeClick}
-      onPaneClick={onPaneClick}
-      onNodeDoubleClick={onNodeDoubleClick}
-      fitView
-      minZoom={0.22}
-      maxZoom={2.2}
-      panOnScroll
-      panOnDrag
-      nodesDraggable={false}
-      nodesConnectable={false}
-      edgesReconnectable={false}
-      zoomOnDoubleClick={false}
-      onlyRenderVisibleElements
-      elevateNodesOnSelect={false}
-      proOptions={{ hideAttribution: true }}
-      className="memory-flow"
-    >
-      <Background color="#222230" gap={22} size={1} />
-      <Controls showInteractive={false} className="!fill-white !shadow-none" />
-    </ReactFlow>
-  );
-}
-
-function Dust() {
-  const mobile = useIsMobile();
-  const reduced = usePrefersReducedMotion();
-  const count = reduced ? 0 : mobile ? 6 : 10;
-  if (!count) return null;
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-      {Array.from({ length: count }, (_, i) => (
-        <span
-          key={i}
-          className="network-dust absolute h-1 w-1 rounded-full bg-white/25"
-          style={{
-            left: `${(i * 19 + 7) % 100}%`,
-            top: `${(i * 31 + 11) % 100}%`,
-            animationDelay: `${i * 0.45}s`,
-            animationDuration: `${9 + (i % 5)}s`,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
+import { useGraphModel } from "../../hooks/useGraphModel";
+import MemoryCanvas from "./MemoryCanvas";
+import NetworkFilters from "./NetworkFilters";
+import ConnectedMomentsList from "./ConnectedMomentsList";
 
 export default function MemoryNetwork({ hint }: { hint?: string }) {
-  const mode = useLifeStore((s) => s.networkMode);
+  const {
+    graph,
+    rfNodes,
+    rfEdges,
+    list,
+    compact,
+    connected,
+    years,
+    mode,
+    locs,
+    filteredOn,
+    graphEmptyHint,
+  } = useGraphModel();
   const setMode = useLifeStore((s) => s.setNetworkMode);
-  const year = useLifeStore((s) => s.year);
-  const setYear = useLifeStore((s) => s.setYear);
-  const month = useLifeStore((s) => s.month);
-  const setMonth = useLifeStore((s) => s.setMonth);
-  const receipts = useLifeStore((s) => s.receipts);
-  const edges = useLifeStore((s) => s.edges);
-  const receiptById = useLifeStore((s) => s.receiptById);
-  const edgesByNode = useLifeStore((s) => s.edgesByNode);
-  const years = useLifeStore((s) => s.years);
   const select = useLifeStore((s) => s.select);
+  const selectPlace = useLifeStore((s) => s.selectPlace);
   const selectedId = useLifeStore((s) => s.selectedId);
-  const types = useLifeStore((s) => s.activeTypes);
-  const present = useLifeStore((s) => s.presentTypes);
-  const hourLens = useLifeStore((s) => s.hourLens);
-  const locationLens = useLifeStore((s) => s.locationLens);
-  const traceIds = useLifeStore((s) => s.traceIds);
-  const connected = edgesByNode.size;
-  const indexes = useMemo(() => ({ byId: receiptById, edgesByNode }), [receiptById, edgesByNode]);
-  const mobile = useIsMobile();
-  const locs = useLifeStore((s) => s.locationStats);
-  const graph = useMemo(
-    () =>
-      pickGraphReceipts(
-        receipts,
-        edges,
-        {
-          types,
-          presentTypes: present,
-          year,
-          month,
-          hourLens,
-          location: locationLens,
-          traceIds,
-        },
-        mobile ? 48 : 96,
-        indexes,
-      ),
-    [receipts, edges, types, present, year, month, hourLens, locationLens, traceIds, indexes, mobile],
-  );
-  const list = graph.nodes.slice(0, 20);
-  const positions = useMemo(() => {
-    if (mode === "places") return layoutPlaces(locs);
-    return layoutMoments(graph.nodes, mode);
-  }, [mode, locs, graph.nodes]);
-  const rfNodes: Node[] = useMemo(() => {
-    if (mode === "places") {
-      return locs.map((l) => ({
-        id: `place::${l.location}`,
-        type: "place",
-        position: positions.get(l.location) ?? { x: 0, y: 0 },
-        data: {
-          location: l.location,
-          count: l.count,
-          mix: Object.entries(l.byType)
-            .map(([t, n]) => `${TYPE_LABEL[t as keyof typeof TYPE_LABEL]} ${n}`)
-            .join(" · "),
-        },
-      }));
-    }
-    return graph.nodes.map((n) => ({
-      id: n.id,
-      type: "moment",
-      position: positions.get(n.id) ?? { x: 0, y: 0 },
-      data: {
-        title: n.title,
-        type: n.type,
-        when: formatDay(n.timestamp),
-        preview: n.description,
-      },
-    }));
-  }, [mode, locs, graph.nodes, positions]);
-  const rfEdges: Edge[] = useMemo(() => {
-    if (mode === "places") {
-      return placeCooccurrence(
-        receipts,
-        locs.map((l) => l.location),
-      ).map((e, i) => ({
-        id: `pl-${i}`,
-        type: "memory",
-        source: `place::${e.a}`,
-        target: `place::${e.b}`,
-        data: { a: e.a, b: e.b, detail: e.detail, kind: "place" },
-      }));
-    }
-    return graph.visEdges.map((e) => ({
-      id: `${e.a}|${e.b}|${e.reason}`,
-      type: "memory",
-      source: e.a,
-      target: e.b,
-      data: { a: e.a, b: e.b, reason: e.reason, detail: e.detail },
-    }));
-  }, [mode, locs, graph.visEdges, receipts]);
+  const selectedPlace = useLifeStore((s) => s.selectedPlace);
   const clearLenses = useLifeStore((s) => s.clearLenses);
-  const graphEmptyHint = receipts.length === 0;
+  const selectedTitle = useLifeStore((s) => (s.selectedId ? (s.receiptById.get(s.selectedId)?.title ?? null) : null));
 
-  const filteredOn = Boolean(year || month || traceIds || hourLens !== "all" || locationLens);
+  const listItems =
+    mode === "places"
+      ? locs.slice(0, 20).map((l) => ({
+          id: l.location,
+          title: l.location,
+          typeLabel: `${l.count} records`,
+          icon: "📍",
+        }))
+      : list.map((r) => ({
+          id: r.id,
+          title: r.title,
+          typeLabel: TYPE_LABEL[r.type],
+          icon: TYPE_ICON[r.type],
+        }));
+
+  const announced =
+    mode === "places" && selectedPlace
+      ? `${selectedPlace} selected. Story details opened.`
+      : selectedTitle
+        ? `${selectedTitle} selected. Story details opened.`
+        : "";
 
   return (
-    <div className="mt-6">
+    <div className="mt-5 min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Memory network</h2>
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">Memory network</h2>
           <p className="mt-1 text-sm text-mute">
             {hint ?? "Each dot is a moment. Lines show relationships. Click a moment to explore."}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           {filteredOn && (
             <button
               type="button"
               onClick={() => clearLenses()}
-              className="rounded-full border border-white/[0.08] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-mute hover:text-white"
+              className="min-h-11 rounded-full border border-white/[0.08] px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-mute hover:text-white"
             >
               Reset view
             </button>
           )}
-          <div className="flex gap-1 rounded-full border border-white/[0.08] p-1 text-[10px] font-semibold uppercase tracking-[0.14em]">
+          <div
+            className="flex min-h-11 gap-1 rounded-full border border-white/[0.08] p-1 text-[10px] font-semibold uppercase tracking-[0.14em]"
+            role="group"
+            aria-label="Network layout"
+          >
             {(["moments", "places", "time"] as const).map((m) => (
               <button
                 key={m}
                 type="button"
+                aria-pressed={mode === m}
                 onClick={() => setMode(m)}
-                className={`rounded-full px-3 py-1.5 ${mode === m ? "bg-accent text-white" : "text-mute hover:text-white"}`}
+                className={`min-h-9 rounded-full px-3 ${mode === m ? "bg-accent text-white" : "text-mute hover:text-white"}`}
               >
                 {m}
               </button>
@@ -305,108 +88,32 @@ export default function MemoryNetwork({ hint }: { hint?: string }) {
         </div>
       </div>
 
-      <div className="mt-4">
-        <FilterChips />
-      </div>
-
-      <div className="relative mt-5">
-        <div className="pointer-events-none absolute inset-x-3 top-[15px] h-px bg-white/[0.08]" />
-        <div className="no-scrollbar relative flex gap-2 overflow-x-auto pb-1">
-          <button
-            type="button"
-            onClick={() => setYear(null)}
-            className={`shrink-0 rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.14em] ${
-              year == null ? "border-accent text-white" : "border-white/[0.08] text-mute"
-            }`}
-          >
-            All years
-          </button>
-          {years.map((y) => (
-            <button
-              key={y}
-              type="button"
-              onClick={() => setYear(y)}
-              className={`shrink-0 rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.14em] ${
-                year === y ? "border-accent text-white" : "border-white/[0.08] text-mute"
-              }`}
-            >
-              {y}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">
-        <button
-          type="button"
-          onClick={() => setMonth(null)}
-          className={`shrink-0 rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.14em] ${
-            month == null ? "border-accent/70 text-white" : "border-white/[0.08] text-mute"
-          }`}
-        >
-          All months
-        </button>
-        {MONTHS.map((label, i) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => setMonth(i + 1)}
-            className={`shrink-0 rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.14em] ${
-              month === i + 1 ? "border-accent text-white" : "border-white/[0.08] text-mute"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <NetworkFilters compact={compact} years={years} />
 
       <p className="mt-3 text-xs text-mute">
         Showing a connected sample of the archive
         {selectedId
           ? " · brighter nodes are linked to your selection"
           : ` · ${connected.toLocaleString("en-IN")} receipts have at least one stored relationship`}
-        . Click a line to see why two moments connect.
+        . {compact ? "Tap a moment or a line to open its story." : "Click a line to see why two moments connect."}
       </p>
 
-      <div className="relative mt-4 h-[min(68vh,640px)] overflow-hidden rounded-3xl border border-white/[0.08] bg-[#0B0B10]">
-        <Dust />
-        <ReactFlowProvider>
-          <NetworkCanvas graph={graph} rfNodes={rfNodes} rfEdges={rfEdges} />
-        </ReactFlowProvider>
-        <p className="pointer-events-none absolute left-4 top-4 text-[10px] uppercase tracking-[0.2em] text-mute">
-          Drag to pan · scroll to zoom · double-click to focus · Esc clears
-        </p>
-        {graphEmptyHint && (
-          <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-mute">
-            The archive has not loaded yet.
-          </p>
-        )}
-      </div>
+      <p className="sr-only" aria-live="polite">
+        {announced}
+      </p>
 
-      <section className="mt-4" aria-labelledby="graph-list-title">
-        <h3 id="graph-list-title" className="text-sm font-semibold">
-          {list.length} connected moments in this view
-        </h3>
-        <p className="mt-1 text-xs text-mute">Keyboard alternative to the canvas. Enter selects a receipt.</p>
-        <ul className="mt-3 max-h-48 space-y-1 overflow-y-auto rounded-2xl border border-white/[0.08] p-2">
-          {list.map((r) => (
-            <li key={r.id}>
-              <button
-                type="button"
-                aria-current={selectedId === r.id ? "true" : undefined}
-                onClick={() => select(r.id)}
-                className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm ${
-                  selectedId === r.id ? "bg-accent/20 text-white" : "text-mute hover:text-white"
-                }`}
-              >
-                <span aria-hidden>{TYPE_ICON[r.type]}</span>
-                <span className="min-w-0 flex-1 truncate">{r.title}</span>
-                <span className="shrink-0 text-[10px] uppercase tracking-wider">{TYPE_LABEL[r.type]}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <MemoryCanvas graph={graph} rfNodes={rfNodes} rfEdges={rfEdges} compact={compact} empty={graphEmptyHint} />
+
+      <ConnectedMomentsList
+        items={listItems}
+        selectedId={mode === "places" ? selectedPlace : selectedId}
+        onSelect={mode === "places" ? selectPlace : select}
+        heading={
+          mode === "places"
+            ? `${listItems.length} places in this view`
+            : `${listItems.length} connected moments in this view`
+        }
+      />
     </div>
   );
 }

@@ -11,6 +11,17 @@
   --text: #f5f5f7;
   --muted: #9696a5;
   --accent: #7c6bff;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --nav-h: 0px;
+  --dock-h: 0px;
+  --touch: 44px;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --nav-h: calc(3.85rem + var(--safe-bottom));
+  }
 }
 
 html {
@@ -21,19 +32,30 @@ html,
 body,
 #root {
   min-height: 100%;
+  min-height: 100dvh;
   background: var(--bg);
   color: var(--text);
+  overflow-x: clip;
 }
 
 body {
   margin: 0;
-  overflow-x: hidden;
+  overflow-x: clip;
   font-family: "Plus Jakarta Sans", system-ui, sans-serif;
   font-feature-settings: "ss01" on, "cv11" on;
   background:
     radial-gradient(1200px 700px at 50% -10%, rgba(124, 107, 255, 0.16), transparent 55%),
     radial-gradient(900px 500px at 100% 100%, rgba(94, 234, 212, 0.05), transparent 50%),
     var(--bg);
+}
+
+button,
+a,
+[role="button"],
+input,
+select,
+summary {
+  touch-action: manipulation;
 }
 
 ::selection {
@@ -174,6 +196,9 @@ body {
   background: #121218;
 }
 .memory-flow .react-flow__controls-button {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
   background: #121218;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   fill: #f5f5f7;
@@ -183,6 +208,26 @@ body {
 }
 .memory-flow .react-flow__edge-path {
   stroke-linecap: round;
+}
+
+@media (max-width: 1023px) {
+  .memory-flow .react-flow__controls {
+    left: auto;
+    right: 10px;
+    bottom: auto;
+    top: 10px;
+  }
+}
+
+.story-sheet {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+@media (max-width: 1023px) {
+  .story-sheet {
+    bottom: calc(var(--nav-h) + var(--dock-h));
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  }
 }
 
 @keyframes network-dust {

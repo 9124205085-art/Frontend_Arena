@@ -13,7 +13,7 @@ export function PageIntro({
 }) {
   return (
     <header className="max-w-3xl">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.36em] text-accent">{kicker}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent sm:tracking-[0.36em]">{kicker}</p>
       <h1 className="mt-3 text-[clamp(2rem,5vw,3.4rem)] font-extrabold leading-[0.95] tracking-[-0.04em]">{title}</h1>
       {children ? <div className="mt-3 max-w-2xl text-[15px] leading-relaxed text-mute">{children}</div> : null}
     </header>
@@ -73,9 +73,9 @@ export function MagneticLink({ to, children }: { to: string; children: ReactNode
     <Link
       ref={ref}
       to={to}
-      className="magnetic-cta inline-flex items-center rounded-full bg-accent px-8 py-3.5 text-sm font-semibold tracking-wide text-white shadow-glow transition-[filter,box-shadow] duration-300 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
+      className="magnetic-cta inline-flex min-h-11 w-full max-w-sm items-center justify-center rounded-full bg-accent px-6 py-3.5 text-sm font-semibold tracking-wide text-white shadow-glow transition-[filter,box-shadow] duration-300 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 sm:w-auto sm:px-8"
       onMouseMove={(e) => {
-        if (reduced || !ref.current) return;
+        if (reduced || window.matchMedia("(pointer: coarse)").matches || !ref.current) return;
         const r = ref.current.getBoundingClientRect();
         const x = e.clientX - r.left - r.width / 2;
         const y = e.clientY - r.top - r.height / 2;

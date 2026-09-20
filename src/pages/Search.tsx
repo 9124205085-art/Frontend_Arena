@@ -1,7 +1,7 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { neighborIds, useLifeStore } from "../store";
-import { searchReceipts } from "../utils/analyzeData";
+import { searchReceipts } from "../domain/search";
 import { SUGGESTED_SEARCHES, TYPE_LABEL } from "../utils/constants";
 import MomentCard from "../components/MomentCard";
 import { EmptyState, PageIntro } from "../components/ui";
@@ -35,7 +35,7 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10 md:px-8">
+    <div className="mx-auto max-w-4xl px-3 py-8 sm:px-4 sm:py-10 md:px-8">
       <PageIntro kicker="Curiosity" title="What are you curious about?" />
       <input
         value={query}
@@ -44,6 +44,11 @@ export default function SearchPage() {
           setActive(0);
         }}
         onKeyDown={(e) => {
+          if (e.key === "Escape" && query) {
+            e.preventDefault();
+            setQuery("");
+            return;
+          }
           if (!results.length) return;
           if (e.key === "ArrowDown") {
             e.preventDefault();
@@ -58,7 +63,8 @@ export default function SearchPage() {
           }
         }}
         placeholder="Search your life…"
-        className="mt-7 w-full rounded-2xl border border-white/[0.08] bg-[#121218] px-5 py-4 text-lg outline-none transition focus:border-accent/50 focus:shadow-[0_0_0_4px_rgba(124,107,255,0.12)]"
+        enterKeyHint="search"
+        className="mt-7 min-h-12 w-full rounded-2xl border border-white/[0.08] bg-[#121218] px-4 py-3 text-base outline-none transition focus:border-accent/50 focus:shadow-[0_0_0_4px_rgba(124,107,255,0.12)] sm:px-5 sm:py-4 sm:text-lg"
         aria-label="Search your life"
         aria-controls="search-results"
         aria-activedescendant={results[active] ? `result-${results[active].id}` : undefined}
@@ -72,7 +78,7 @@ export default function SearchPage() {
             key={s}
             type="button"
             onClick={() => setQuery(s)}
-            className="rounded-full border border-white/[0.08] px-3 py-1.5 text-xs text-mute transition hover:border-accent/40 hover:text-white"
+            className="min-h-11 rounded-full border border-white/[0.08] px-3 text-xs text-mute transition hover:border-accent/40 hover:text-white"
           >
             {s}
           </button>

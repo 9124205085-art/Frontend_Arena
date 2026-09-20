@@ -1,28 +1,28 @@
 import { useLifeStore } from "../store";
-import { getPatternTraceIds } from "../utils/analyzeData";
-import { startPatternNarration } from "../utils/narration";
+import { applyPatternTrace, startPatternNarration } from "../hooks/storyPlayback";
 import MemoryNetwork from "../components/network/MemoryNetwork";
 import { CountUp } from "../components/ui";
+import { usePrefersReducedMotion } from "../hooks/usePrefersReducedMotion";
 
 export default function Overview() {
-  const receipts = useLifeStore((s) => s.receipts);
   const edgesByNode = useLifeStore((s) => s.edgesByNode);
   const connected = edgesByNode.size;
   const stats = useLifeStore((s) => s.overview);
   const discoveries = useLifeStore((s) => s.patterns).slice(0, 3);
   const clearLenses = useLifeStore((s) => s.clearLenses);
   const setNetworkMode = useLifeStore((s) => s.setNetworkMode);
-  const setHourLens = useLifeStore((s) => s.setHourLens);
   const applyTrace = useLifeStore((s) => s.applyTrace);
+  const reduced = usePrefersReducedMotion();
 
-  const toNetwork = () => document.getElementById("network-anchor")?.scrollIntoView({ behavior: "smooth" });
+  const toNetwork = () =>
+    document.getElementById("network-anchor")?.scrollIntoView({ behavior: reduced ? "auto" : "smooth" });
 
   if (!stats) return null;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 md:px-8">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.36em] text-accent">Home</p>
-      <h1 className="mt-3 text-[clamp(2.1rem,5vw,3.6rem)] font-extrabold leading-[0.92] tracking-[-0.04em]">
+    <div className="mx-auto max-w-6xl px-3 py-6 sm:px-4 sm:py-8 md:px-8">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-accent sm:tracking-[0.36em]">Home</p>
+      <h1 className="mt-3 text-[clamp(1.85rem,8vw,3.6rem)] font-extrabold leading-[0.92] tracking-[-0.04em]">
         Your life, in receipts
       </h1>
       <p className="mt-3 max-w-xl text-mute">Small moments. Hidden connections. One story.</p>
@@ -85,17 +85,10 @@ export default function Overview() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (p.id === "explorer") {
-                      setNetworkMode("places");
-                      toNetwork();
-                      return;
-                    }
-                    if (p.id === "night-owl") setHourLens("night");
-                    if (p.id === "rituals") setHourLens("evening");
-                    applyTrace(getPatternTraceIds(receipts, p.id));
+                    applyPatternTrace(p.id);
                     toNetwork();
                   }}
-                  className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white"
+                  className="min-h-11 rounded-full bg-white/10 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-white"
                 >
                   {p.action}
                 </button>
@@ -105,7 +98,7 @@ export default function Overview() {
                     startPatternNarration(p.id);
                     toNetwork();
                   }}
-                  className="rounded-full border border-accent/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent"
+                  className="min-h-11 rounded-full border border-accent/40 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent"
                 >
                   🔊 Explain this
                 </button>
@@ -130,7 +123,7 @@ function ActionStat({
   onClick: () => void;
 }) {
   return (
-    <button type="button" onClick={onClick} className="glass-card rounded-2xl p-5 text-left transition hover:border-accent/40">
+    <button type="button" onClick={onClick} className="glass-card min-h-[7.5rem] rounded-2xl p-4 text-left transition hover:border-accent/40 sm:p-5">
       <p className="text-[10px] uppercase tracking-[0.2em] text-mute">{label}</p>
       <p className="mt-2 text-3xl font-extrabold tabular-nums tracking-tight">
         {typeof value === "number" ? <CountUp value={value} /> : value}

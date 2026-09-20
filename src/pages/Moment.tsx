@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { neighborIds, useLifeStore } from "../store";
-import { getRelatedReceipts, receiptsOnDay } from "../utils/analyzeData";
+import { buildMomentSequence, pathSpanMinutes, timeOfDayMood } from "../domain/story";
 import { TYPE_COLOR, TYPE_LABEL } from "../utils/constants";
 import { formatWhen } from "../utils/format";
 
@@ -14,32 +14,11 @@ export default function Moment() {
   const edges = useLifeStore((s) => s.edges);
   const applyTrace = useLifeStore((s) => s.applyTrace);
 
-  const seq = useMemo(() => {
-    if (!seed) return [];
-    const related = getRelatedReceipts(seed.id, receipts, edges);
-    const sameDay = receiptsOnDay(receipts, seed.timestamp.slice(0, 10));
-    const mixed: typeof receipts = [seed];
-    const seen = new Set([seed.id]);
-    for (const r of related) {
-      if (seen.has(r.id)) continue;
-      seen.add(r.id);
-      mixed.push(r);
-    }
-    for (const r of sameDay) {
-      if (seen.has(r.id)) continue;
-      if (mixed.some((m) => m.type === r.type) && mixed.length >= 4) continue;
-      seen.add(r.id);
-      mixed.push(r);
-      if (mixed.length >= 6) break;
-    }
-    return mixed.slice(0, 6).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-  }, [seed, receipts, edges]);
-
-  const spanMin = useMemo(() => {
-    if (seq.length < 2) return 0;
-    const t = seq.map((r) => new Date(r.timestamp).getTime()).sort((a, b) => a - b);
-    return Math.round((t[t.length - 1] - t[0]) / 60000);
-  }, [seq]);
+  const seq = useMemo(
+    () => (seed ? buildMomentSequence(seed, receipts, edges) : []),
+    [seed, receipts, edges],
+  );
+  const spanMin = useMemo(() => pathSpanMinutes(seq), [seq]);
 
   if (!seed) {
     return (
@@ -52,11 +31,10 @@ export default function Moment() {
     );
   }
 
-  const hour = new Date(seed.timestamp).getHours();
-  const mood = hour >= 21 || hour < 5 ? "One ordinary night." : hour < 12 ? "One ordinary morning." : "One ordinary day.";
+  const mood = timeOfDayMood(seed.timestamp);
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-14 md:px-8">
+    <div className="mx-auto max-w-2xl px-3 py-10 sm:px-4 sm:py-14 md:px-8">
       <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-accent">{formatWhen(seed.timestamp)}</p>
       <h1 className="mt-4 text-[clamp(2.2rem,5vw,3.4rem)] font-extrabold leading-[0.95] tracking-[-0.04em]">
         {mood}
@@ -100,7 +78,7 @@ export default function Moment() {
               applyTrace([seed.id, ...neighborIds(seed.id), ...seq.map((r) => r.id)]);
               navigate("/network");
             }}
-            className="rounded-full bg-accent px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.16em] text-white"
+            className="min-h-11 rounded-full bg-accent px-5 text-xs font-semibold uppercase tracking-[0.16em] text-white"
           >
             Follow on the network →
           </button>

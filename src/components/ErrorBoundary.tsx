@@ -23,7 +23,7 @@ export default class ErrorBoundary extends Component<Props, State> {
   render() {
     if (!this.state.err) return this.props.children;
     return (
-      <div className="flex min-h-[40vh] flex-col items-center justify-center px-6 text-center">
+      <div className="flex min-h-[40vh] flex-col items-center justify-center px-6 text-center" role="alert">
         <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-accent">Something went wrong</p>
         <h2 className="mt-3 text-2xl font-bold">{this.props.fallbackTitle ?? "This view could not be shown."}</h2>
         <p className="mt-2 max-w-md text-sm text-mute">{this.state.err}</p>
