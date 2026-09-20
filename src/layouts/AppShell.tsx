@@ -2,10 +2,12 @@ import { Outlet, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import Header from "./Header";
 import Sidebar, { BottomNav } from "./Sidebar";
-import ReceiptDrawer from "../components/ReceiptDrawer";
+import StoryPanel from "../components/network/StoryPanel";
+import { useLifeStore } from "../store";
 
 export default function AppShell() {
   const location = useLocation();
+  const toast = useLifeStore((s) => s.toast);
 
   return (
     <div className="grain flex min-h-svh bg-ink text-[#F5F5F7]">
@@ -30,7 +32,12 @@ export default function AppShell() {
         </main>
       </div>
       <BottomNav />
-      <ReceiptDrawer />
+      <StoryPanel />
+      {toast && (
+        <p className="glass pointer-events-none fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-xs md:bottom-8">
+          {toast}
+        </p>
+      )}
     </div>
   );
 }

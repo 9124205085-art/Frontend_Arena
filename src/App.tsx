@@ -4,11 +4,9 @@ import AppShell from "./layouts/AppShell";
 import Landing from "./pages/Landing";
 import Overview from "./pages/Overview";
 import Journey from "./pages/Journey";
-import Connections from "./pages/Connections";
+import Network from "./pages/Network";
+import Discoveries from "./pages/Discoveries";
 import Moment from "./pages/Moment";
-import Chapters from "./pages/Chapters";
-import Patterns from "./pages/Patterns";
-import Places from "./pages/Places";
 import SearchPage from "./pages/Search";
 import { useLifeStore } from "./store";
 
@@ -52,12 +50,14 @@ export default function App() {
         <Route element={<AppShell />}>
           <Route path="/overview" element={<Overview />} />
           <Route path="/journey" element={<Journey />} />
-          <Route path="/connections" element={<Connections />} />
-          <Route path="/moment/:id" element={<Moment />} />
-          <Route path="/chapters" element={<Chapters />} />
-          <Route path="/patterns" element={<Patterns />} />
-          <Route path="/places" element={<Places />} />
+          <Route path="/network" element={<Network />} />
+          <Route path="/discoveries" element={<Discoveries />} />
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/moment/:id" element={<Moment />} />
+          <Route path="/connections" element={<Navigate to="/network" replace />} />
+          <Route path="/patterns" element={<Navigate to="/discoveries" replace />} />
+          <Route path="/places" element={<Navigate to="/network" replace />} />
+          <Route path="/chapters" element={<Navigate to="/discoveries" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

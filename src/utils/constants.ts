@@ -23,6 +23,18 @@ export const TYPE_COLOR: Record<ReceiptType, string> = {
   note: "#F5F5F7",
 };
 
+export const TYPE_ICON: Record<ReceiptType, string> = {
+  music: "🎵",
+  movie: "🎬",
+  place: "📍",
+  purchase: "🛍",
+  photo: "📷",
+  message: "💬",
+  search: "🔎",
+  event: "🎟",
+  note: "📝",
+};
+
 export const TYPE_LABEL: Record<ReceiptType, string> = {
   music: "Music",
   movie: "Movies",

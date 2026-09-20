@@ -1,21 +1,11 @@
 import { NavLink, Link } from "react-router-dom";
-import {
-  Activity,
-  GitBranch,
-  Home,
-  Layers,
-  MapPin,
-  Search,
-  Sparkles,
-} from "lucide-react";
+import { Activity, GitBranch, Home, Search, Sparkles } from "lucide-react";
 
 const LINKS = [
   { to: "/overview", label: "Home", icon: Home },
   { to: "/journey", label: "Journey", icon: Activity },
-  { to: "/connections", label: "Connections", icon: GitBranch },
-  { to: "/chapters", label: "Chapters", icon: Layers },
-  { to: "/patterns", label: "Patterns", icon: Sparkles },
-  { to: "/places", label: "Places", icon: MapPin },
+  { to: "/network", label: "Network", icon: GitBranch },
+  { to: "/discoveries", label: "Discoveries", icon: Sparkles },
   { to: "/search", label: "Search", icon: Search },
 ];
 
@@ -28,7 +18,7 @@ export default function Sidebar() {
       <nav className="mt-8 flex flex-1 flex-col gap-1" aria-label="Primary">
         {LINKS.map(({ to, label, icon: Icon }) => (
           <NavLink
-            key={to}
+            key={label}
             to={to}
             className={({ isActive }) =>
               `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
@@ -43,16 +33,21 @@ export default function Sidebar() {
           </NavLink>
         ))}
       </nav>
-      <div className="glass-card rounded-2xl p-3">
+      <Link to="/" className="glass-card rounded-2xl p-3 transition hover:border-accent/40">
         <p className="text-sm font-semibold">Alex</p>
-        <p className="text-xs text-mute">Digital memory explorer</p>
-      </div>
+        <p className="text-xs text-mute">Return to the landing — then enter the network.</p>
+      </Link>
     </aside>
   );
 }
 
 export function BottomNav() {
-  const mobile = LINKS.filter((l) => ["/overview", "/journey", "/connections", "/patterns"].includes(l.to));
+  const mobile = [
+    { to: "/overview", label: "Home", icon: Home },
+    { to: "/journey", label: "Journey", icon: Activity },
+    { to: "/network", label: "Network", icon: GitBranch },
+    { to: "/discoveries", label: "Discover", icon: Sparkles },
+  ];
   return (
     <nav
       aria-label="Mobile"
@@ -60,7 +55,7 @@ export function BottomNav() {
     >
       {mobile.map(({ to, label, icon: Icon }) => (
         <NavLink
-          key={to}
+          key={label}
           to={to}
           className={({ isActive }) =>
             `flex flex-col items-center gap-1 rounded-xl py-1.5 text-[10px] uppercase tracking-wider ${

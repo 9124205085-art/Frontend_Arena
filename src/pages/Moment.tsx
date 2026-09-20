@@ -1,15 +1,17 @@
 import { useMemo } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useLifeStore } from "../store";
+import { neighborIds, useLifeStore } from "../store";
 import { getRelatedReceipts, receiptsOnDay } from "../utils/analyzeData";
 import { TYPE_COLOR, TYPE_LABEL } from "../utils/constants";
 import { formatWhen } from "../utils/format";
 
 export default function Moment() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const receipts = useLifeStore((s) => s.receipts);
   const edges = useLifeStore((s) => s.edges);
+  const applyTrace = useLifeStore((s) => s.applyTrace);
   const seed = receipts.find((r) => r.id === id);
 
   const seq = useMemo(() => {
@@ -43,8 +45,8 @@ export default function Moment() {
     return (
       <div className="px-8 py-20 text-center text-mute">
         Moment not found.{" "}
-        <Link to="/journey" className="text-accent">
-          Back to journey
+        <Link to="/network" className="text-accent">
+          Back to network
         </Link>
       </div>
     );
@@ -89,6 +91,20 @@ export default function Moment() {
         <p className="mt-12 text-center text-sm text-mute">
           These records occurred within {spanMin} minutes of each other.
         </p>
+      )}
+      {seed && (
+        <div className="mt-10 flex justify-center">
+          <button
+            type="button"
+            onClick={() => {
+              applyTrace([seed.id, ...neighborIds(seed.id, edges), ...seq.map((r) => r.id)]);
+              navigate("/network");
+            }}
+            className="rounded-full bg-accent px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.16em] text-white"
+          >
+            Follow on the network →
+          </button>
+        </div>
       )}
     </div>
   );

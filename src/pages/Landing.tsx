@@ -53,9 +53,7 @@ export default function Landing() {
           transition={{ delay: 0.45, duration: 0.7 }}
           className="mt-7 max-w-lg text-lg leading-relaxed text-mute"
         >
-          {stats.total.toLocaleString("en-IN")} records from the provided archives.
-          <br />
-          One story waiting to be discovered.
+          Small moments. Hidden connections. One story.
         </motion.p>
 
         <motion.div
@@ -75,8 +73,8 @@ export default function Landing() {
           transition={{ delay: 0.85, duration: 0.6 }}
           className="mt-14"
         >
-          <MagneticLink to="/overview">Enter your story →</MagneticLink>
-          <p className="mt-5 text-xs tracking-wide text-mute">Explore the moments that made up a life.</p>
+          <MagneticLink to="/overview">Enter the memory network →</MagneticLink>
+          <p className="mt-5 text-xs tracking-wide text-mute">Click a moment. Follow its connections. Discover the story.</p>
         </motion.div>
       </div>
     </div>

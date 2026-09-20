@@ -1,4 +1,4 @@
-import { TYPE_COLOR, TYPE_LABEL } from "../utils/constants";
+import { TYPE_COLOR, TYPE_ICON, TYPE_LABEL } from "../utils/constants";
 import { useLifeStore } from "../store";
 
 export default function FilterChips() {
@@ -35,7 +35,7 @@ export default function FilterChips() {
               background: on ? `${TYPE_COLOR[t]}18` : "transparent",
             }}
           >
-            {TYPE_LABEL[t]}
+            <span aria-hidden>{TYPE_ICON[t]}</span> {TYPE_LABEL[t]}
           </button>
         );
       })}

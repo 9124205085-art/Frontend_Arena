@@ -1,6 +1,6 @@
 import { Bell, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useLifeStore } from "../store";
 
 export default function Header() {
@@ -8,7 +8,6 @@ export default function Header() {
   const query = useLifeStore((s) => s.query);
   const setQuery = useLifeStore((s) => s.setQuery);
   const ref = useRef<HTMLInputElement>(null);
-  const [notice, setNotice] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -42,28 +41,26 @@ export default function Header() {
         />
       </label>
       <div className="hidden items-center gap-3 sm:flex">
-        <div className="relative">
-          <button
-            type="button"
-            aria-label="Notifications"
-            onClick={() => setNotice((v) => !v)}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] text-mute transition hover:text-white"
-          >
-            <Bell size={15} />
-          </button>
-          {notice && (
-            <div className="glass absolute right-0 top-11 z-40 w-56 rounded-2xl p-3 text-left text-xs text-mute">
-              Archive is current. No new traces since the last visit.
-            </div>
-          )}
-        </div>
-        <div className="text-right">
+        <button
+          type="button"
+          aria-label="Open discoveries"
+          onClick={() => navigate("/discoveries")}
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] text-mute transition hover:text-white"
+        >
+          <Bell size={15} />
+        </button>
+        <button type="button" onClick={() => navigate("/")} className="text-right">
           <p className="text-sm font-semibold">Alex</p>
           <p className="text-[10px] uppercase tracking-wider text-mute">Explorer</p>
-        </div>
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/30 text-xs font-bold ring-1 ring-white/10">
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate("/network")}
+          aria-label="Open memory network"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/30 text-xs font-bold ring-1 ring-white/10"
+        >
           A
-        </div>
+        </button>
       </div>
     </header>
   );

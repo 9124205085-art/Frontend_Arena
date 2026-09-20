@@ -1,16 +1,18 @@
 import { useMemo } from "react";
-import { useLifeStore } from "../store";
-import { getConnections, searchReceipts } from "../utils/analyzeData";
+import { useNavigate } from "react-router-dom";
+import { neighborIds, useLifeStore } from "../store";
+import { searchReceipts } from "../utils/analyzeData";
 import { SUGGESTED_SEARCHES, TYPE_LABEL } from "../utils/constants";
 import MomentCard from "../components/MomentCard";
 import { EmptyState, PageIntro } from "../components/ui";
 
 export default function SearchPage() {
+  const navigate = useNavigate();
   const receipts = useLifeStore((s) => s.receipts);
   const edges = useLifeStore((s) => s.edges);
   const query = useLifeStore((s) => s.query);
   const setQuery = useLifeStore((s) => s.setQuery);
-  const select = useLifeStore((s) => s.select);
+  const applyTrace = useLifeStore((s) => s.applyTrace);
 
   const results = useMemo(() => (query.trim() ? searchReceipts(query, receipts) : []), [query, receipts]);
   const grouped = useMemo(() => {
@@ -66,8 +68,11 @@ export default function SearchPage() {
                   <MomentCard
                     key={r.id}
                     receipt={r}
-                    onOpen={() => select(r.id)}
-                    connections={getConnections(r.id, edges).length}
+                    onOpen={() => {
+                      applyTrace([r.id, ...neighborIds(r.id, edges)]);
+                      navigate("/network");
+                    }}
+                    connections={neighborIds(r.id, edges).length}
                   />
                 ))}
               </div>

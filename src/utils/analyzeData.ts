@@ -132,6 +132,7 @@ export interface Pattern {
   title: string;
   body: string;
   detail: string;
+  action: string;
 }
 
 function topCount(map: Map<string, number>): [string, number] | null {
@@ -179,6 +180,7 @@ export function getPatterns(receipts: Receipt[]): Pattern[] {
       title: "Night Owl",
       body: `The dataset shows ${nightPct}% of records between 10 PM and 1 AM. Peak hour is ${peakLabel} (${peak?.count.toLocaleString("en-IN")} records).`,
       detail: `${night.toLocaleString("en-IN")} of ${receipts.length.toLocaleString("en-IN")} receipts in that window.`,
+      action: "Trace them →",
     },
   ];
 
@@ -189,6 +191,7 @@ export function getPatterns(receipts: Receipt[]): Pattern[] {
       title: "Music & Movement",
       body: `On ${musicAndPlace.length.toLocaleString("en-IN")} days, a music record and a place record share a date. Music appears on ${musicDays.length.toLocaleString("en-IN")} active days.`,
       detail: "Counted from same-day co-occurrence in the archive.",
+      action: "Show these moments →",
     });
   } else if (musicDays.length > 0) {
     patterns.push({
@@ -197,6 +200,7 @@ export function getPatterns(receipts: Receipt[]): Pattern[] {
       title: "Music, mostly alone",
       body: `Music appears on ${musicDays.length.toLocaleString("en-IN")} days. The dataset does not show place records on those same dates.`,
       detail: "No same-day music + place overlap was found.",
+      action: "Show music days →",
     });
   }
 
@@ -207,6 +211,7 @@ export function getPatterns(receipts: Receipt[]): Pattern[] {
       title: "Explorer",
       body: `${locs.length.toLocaleString("en-IN")} distinct locations appear in the records. Most recurrent: ${locs[0].location} (${locs[0].count.toLocaleString("en-IN")} traces).`,
       detail: `${locs.reduce((s, l) => s + l.count, 0).toLocaleString("en-IN")} located receipts.`,
+      action: "Explore locations →",
     });
   }
 
@@ -217,6 +222,7 @@ export function getPatterns(receipts: Receipt[]): Pattern[] {
       title: "After-hours spending",
       body: `${eveningPurchases.length.toLocaleString("en-IN")} purchases are timestamped after 6 PM${events.length ? `, and the archive also contains ${events.length.toLocaleString("en-IN")} event receipts` : ""}.`,
       detail: "Hour filter applied to purchase records only.",
+      action: "Show these moments →",
     });
   }
 
@@ -227,6 +233,7 @@ export function getPatterns(receipts: Receipt[]): Pattern[] {
       title: "Repeated listening",
       body: `The Spotify archive names ${topArtist[0]} most often — ${topArtist[1].toLocaleString("en-IN")} plays.`,
       detail: `Counted from the artist_name field. ${skipped.toLocaleString("en-IN")} of ${music.toLocaleString("en-IN")} plays are marked skipped.`,
+      action: "Trace them →",
     });
   }
 
@@ -237,6 +244,7 @@ export function getPatterns(receipts: Receipt[]): Pattern[] {
       title: "Household mix",
       body: `In the household ledger, ${topCat[0]} is the most common category (${topCat[1].toLocaleString("en-IN")} rows).`,
       detail: "Counted from the Category field in Daily Household Transactions.",
+      action: "Show these moments →",
     });
   }
 
@@ -259,7 +267,61 @@ export function getOverview(receipts: Receipt[]) {
     peakHour: peak?.hour ?? 0,
     peakCount: peak?.count ?? 0,
     topCategory: cats[0]?.label ?? "—",
+    dateStart: receipts[0]?.timestamp ?? "",
+    dateEnd: receipts[receipts.length - 1]?.timestamp ?? "",
   };
+}
+
+export function getYears(receipts: Receipt[]): number[] {
+  return [...new Set(receipts.map((r) => Number(r.timestamp.slice(0, 4))))].filter((y) => y > 1900).sort((a, b) => a - b);
+}
+
+export function getPatternTraceIds(receipts: Receipt[], patternId: string, limit = 500): string[] {
+  if (patternId === "night-owl") {
+    return receipts.filter((r) => hourOf(r.timestamp) >= 22 || hourOf(r.timestamp) <= 1).slice(0, limit).map((r) => r.id);
+  }
+  if (patternId === "music-move") {
+    const daily = getDailyActivity(receipts);
+    const wantPlace = daily.some((d) => (d.byType.music ?? 0) > 0 && (d.byType.place ?? 0) > 0);
+    const daySet = new Set(
+      daily.filter((d) => (d.byType.music ?? 0) > 0 && (!wantPlace || (d.byType.place ?? 0) > 0)).map((d) => d.date),
+    );
+    return receipts
+      .filter((r) => daySet.has(dayStamp(r.timestamp)) && (r.type === "music" || r.type === "place"))
+      .slice(0, limit)
+      .map((r) => r.id);
+  }
+  if (patternId === "explorer") {
+    const locs = getLocationStats(receipts);
+    const top = locs[0];
+    if (!top) return receipts.filter((r) => r.location).slice(0, limit).map((r) => r.id);
+    return receipts.filter((r) => r.location === top.location).slice(0, limit).map((r) => r.id);
+  }
+  if (patternId === "rituals") {
+    return receipts.filter((r) => r.type === "purchase" && hourOf(r.timestamp) >= 18).slice(0, limit).map((r) => r.id);
+  }
+  if (patternId === "repeat-artist") {
+    const artists = new Map<string, number>();
+    for (const r of receipts) {
+      const artist = String(r.extra?.artist || "").trim();
+      if (artist) artists.set(artist, (artists.get(artist) ?? 0) + 1);
+    }
+    const top = [...artists.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+    if (!top) return [];
+    return receipts.filter((r) => String(r.extra?.artist || "") === top).slice(0, limit).map((r) => r.id);
+  }
+  if (patternId === "household-mix") {
+    const cats = new Map<string, number>();
+    for (const r of receipts) {
+      if (r.source !== "household") continue;
+      const cat = String(r.extra?.category || "").trim();
+      if (cat) cats.set(cat, (cats.get(cat) ?? 0) + 1);
+    }
+    const top = [...cats.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+    if (!top) return receipts.filter((r) => r.source === "household").slice(0, limit).map((r) => r.id);
+    return receipts.filter((r) => r.source === "household" && String(r.extra?.category || "") === top).slice(0, limit).map((r) => r.id);
+  }
+  return [];
 }
 
 export function searchReceipts(query: string, receipts: Receipt[]): Receipt[] {
